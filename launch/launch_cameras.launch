@@ -1,0 +1,18 @@
+<launch>
+
+    <!-- Camera launch parameters. -->
+    <arg name="fps" default="15"/>
+    <arg name="enable_pointcloud" default="true"/>
+    <arg name="align_depth" default="false"/>
+    <arg name="cameras_config" default="cameras.yaml"/>
+    <arg name="resolution" default="640x480"/>
+
+    <param name="~rate" value="$(arg fps)" type="int"/>
+    <param name="~enable_pointcloud" value="$(arg enable_pointcloud)" type="bool"/>
+    <param name="~align_depth" value="$(arg align_depth)" type="bool"/>
+
+    <node pkg="mmint_camera_utils" type="launch_cameras.py" name="launch_camera_node" output="screen" args="--resolution $(arg resolution)">
+        <rosparam command="load" file="$(find bimanual)/config/$(arg cameras_config)"/>
+    </node>
+
+</launch>
