@@ -60,7 +60,7 @@ def gripper_forward_kinematics_example():
     ConfigureParser(parser)
     parser.AddModelsFromUrl("package://bimanual/urdf/med.urdf")
     
-    apriltag_rot = RotationMatrix.MakeXRotation(-np.pi/2) @ RotationMatrix.MakeZRotation(np.pi)
+    apriltag_rot = RotationMatrix.MakeZRotation(np.pi/2) @ RotationMatrix.MakeXRotation(-np.pi/2)
     apriltag_trans = np.array([-0.025, 0.0365, 0.0865])
     apriltag_rt = RigidTransform(apriltag_rot, apriltag_trans)
     frame_apriltag = FixedOffsetFrame("apriltag", plant.GetFrameByName("iiwa_link_7"), apriltag_rt)
@@ -69,12 +69,6 @@ def gripper_forward_kinematics_example():
     plant.Finalize()
     # Draw the frames
     for body_name in [
-        "iiwa_link_1",
-        "iiwa_link_2",
-        "iiwa_link_3",
-        "iiwa_link_4",
-        "iiwa_link_5",
-        "iiwa_link_6",
         "apriltag"
     ]:
         AddMultibodyTriad(plant.GetFrameByName(body_name), scene_graph)
