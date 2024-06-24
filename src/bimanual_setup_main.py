@@ -50,12 +50,19 @@ class InteractiveArm:
             q0 = plant.GetPositions(plant_context)
             
             gap = 0.48
-            left_pose = pose
+            left_pose = RigidTransform(pose.rotation().ToQuaternion(), pose.translation() + pose.rotation().matrix() @ np.array([0,0,-gap/2]))
             right_rot = RotationMatrix(pose.rotation().matrix()) @ RotationMatrix.MakeYRotation(np.pi)
-            right_pose = RigidTransform(right_rot.ToQuaternion(), pose.translation() + right_rot.matrix() @ np.array([0,0,-gap]))
-            
+            right_pose = RigidTransform(right_rot.ToQuaternion(), pose.translation() + right_rot.matrix() @ np.array([0,0,-gap/2]))
             sol, _ = solveDualIK(plant, left_pose, right_pose, "thanos_finger", "medusa_finger", q0)
-            print(_)
+            
+            # thanos q
+            # format numpy print with commas
+            print("Thanos")
+            print(sol[0:7].tolist())
+            # medusa q
+            print("Medusa") 
+            print(sol[7:].tolist())
+            print()
             plant.SetPositions(plant_context, sol)
 
             # left_pose = plant.GetFrameByName("left_finger").CalcPoseInWorld(plant_context)

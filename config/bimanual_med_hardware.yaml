@@ -1,54 +1,54 @@
 Demo:
   directives:
-    # Add iiwa_medusa
-        - add_model:
-            name: iiwa_medusa
-            file: package://bimanual/urdf/med.urdf
-            default_joint_positions:
-                iiwa_joint_1: [0]
-                iiwa_joint_2: [0.0]
-                iiwa_joint_3: [0]
-                iiwa_joint_4: [0]
-                iiwa_joint_5: [0]
-                iiwa_joint_6: [0]
-                iiwa_joint_7: [0]
-        - add_weld:
-            parent: world
-            child: iiwa_medusa::base
-    # Add iiwa_thanos
-        - add_model:
-            name: iiwa_thanos
-            file: package://bimanual/urdf/med.urdf
-            default_joint_positions:
-                iiwa_joint_1: [0]
-                iiwa_joint_2: [0.0]
-                iiwa_joint_3: [0]
-                iiwa_joint_4: [0]
-                iiwa_joint_5: [0]
-                iiwa_joint_6: [0]
-                iiwa_joint_7: [0]
-        - add_frame:
-            name: iiwa_thanos_origin
-            X_PF:
-              base_frame: world
-              translation: [0.03, 1.31, -0.03]
-        - add_weld:
-            parent: iiwa_thanos_origin
-            child: iiwa_thanos::base
-    # Add finger frames
+      # Add iiwa_medusa
+      - add_model:
+          name: iiwa_medusa
+          file: package://bimanual/urdf/med.urdf
+          default_joint_positions:
+              iiwa_joint_1: [0]
+              iiwa_joint_2: [0]
+              iiwa_joint_3: [0]
+              iiwa_joint_4: [0]
+              iiwa_joint_5: [0]
+              iiwa_joint_6: [0]
+              iiwa_joint_7: [0]
+      - add_weld:
+          parent: world
+          child: iiwa_medusa::base
+      # Add iiwa_thanos
+      - add_model:
+          name: iiwa_thanos
+          file: package://bimanual/urdf/med.urdf
+          default_joint_positions:
+              iiwa_joint_1: [0]
+              iiwa_joint_2: [0]
+              iiwa_joint_3: [0]
+              iiwa_joint_4: [0]
+              iiwa_joint_5: [0]
+              iiwa_joint_6: [0]
+              iiwa_joint_7: [0]
+      - add_frame:
+          name: iiwa_thanos_origin
+          X_PF:
+            base_frame: world
+            translation: [0.03, 1.31, -0.03]
+      - add_weld:
+          parent: iiwa_thanos_origin
+          child: iiwa_thanos::base
+      # Add finger frames
       - add_frame:
           name: thanos_finger
           X_PF:
-          base_frame: iiwa_thanos::iiwa_link_7
-          rotation: !Rpy { deg: [0.0, 0.0, 0.0]}
-          translation: [0.0, 0.0, 0.0]
-
+            base_frame: iiwa_thanos::iiwa_link_7
+            rotation: !Rpy { deg: [0.0, 0.0, 0.0]}
+            translation: [0.0, 0.0, 0.0]
       - add_frame:
           name: medusa_finger
           X_PF:
-          base_frame: iiwa_medusa::iiwa_link_7
-          rotation: !Rpy {deg: [0.0, 0.0, 0.0]}
-          translation: [0.0, 0.0, 0.0]
+            base_frame: iiwa_medusa::iiwa_link_7
+            rotation: !Rpy {deg: [0.0, 0.0, 0.0]}
+            translation: [0.0, 0.0, 0.0]
+
   lcm_buses:
     medusa_lcm:
       channel_suffix: _MEDUSA

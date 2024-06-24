@@ -6,7 +6,7 @@ from pydrake.solvers import SnoptSolver
 from pydrake.all import PiecewisePose, PiecewiseTrajectory, Quaternion, PiecewisePolynomial, JacobianWrtVariable
 from typing import List
 
-def solveDualIK(plant: MultibodyPlant, left_pose: RigidTransform, right_pose: RigidTransform, left_frame_name: str, right_frame_name: str, q0=1e-10*np.ones(14)):
+def solveDualIK(plant: MultibodyPlant, left_pose: RigidTransform, right_pose: RigidTransform, left_frame_name: str, right_frame_name: str, q0=1e-10*np.ones(14), gap=0.48):
     ik = InverseKinematics(plant, with_joint_limits=True)
     ik.AddPositionConstraint(
         plant.GetFrameByName(left_frame_name),
@@ -21,6 +21,7 @@ def solveDualIK(plant: MultibodyPlant, left_pose: RigidTransform, right_pose: Ri
         left_pose.rotation(),
         0.0
     )
+    
     ik.AddPositionConstraint(
         plant.GetFrameByName(right_frame_name),
         np.array([0,0,0]),
@@ -34,6 +35,7 @@ def solveDualIK(plant: MultibodyPlant, left_pose: RigidTransform, right_pose: Ri
         right_pose.rotation(),
         0.0
     )
+    
     prog = ik.get_mutable_prog()
     q = ik.q()
     if np.abs(q0).sum() > 1e-4:
