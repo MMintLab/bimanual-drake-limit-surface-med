@@ -7,11 +7,10 @@ from pydrake.all import (
     PiecewisePolynomial
 )
 import numpy as np
-# JOINT0_THANOS = np.array([-1.4950940483482236, 0.45737168347437573, 1.4222491359501224, -1.790658436904843, 1.1211460873482524, -1.6082243127886424, 0.26302021289848687])
-JOINT0_THANOS = np.zeros(7)
-JOINT0_MEDUSA = np.zeros(7)
+JOINT0_THANOS = np.array([-1.4950940483482236, 0.45737168347437573, 1.4222491359501224, -1.790658436904843, 1.1211460873482524, -1.6082243127886424, 0.26302021289848687])
+JOINT0_MEDUSA = np.array([0.3022651168325996, 0.8943288129955809, 1.1148467035895304, -1.1602488967760345, 1.0310164359946563, 0.30727928231604223, -0.24626643310262913])
 # JOINT0 = np.zeros(7)
-ENDTIME = 20.0
+ENDTIME = 30.0
 if __name__ == '__main__':
     meshcat = StartMeshcat()
     scenario_file = "../config/bimanual_med_hardware.yaml"
@@ -42,8 +41,8 @@ if __name__ == '__main__':
     root_builder.Connect(traj_medusa_block.get_output_port(), hardware_block.GetInputPort("iiwa_medusa_fake.position"))
     
     traj_thanos_block = root_builder.AddSystem(TrajectorySource(traj_thanos))
-    root_builder.Connect(traj_medusa_block.get_output_port(), hardware_block.GetInputPort("iiwa_thanos.position"))
-    root_builder.Connect(traj_medusa_block.get_output_port(), hardware_block.GetInputPort("iiwa_thanos_fake.position"))
+    root_builder.Connect(traj_thanos_block.get_output_port(), hardware_block.GetInputPort("iiwa_thanos.position"))
+    root_builder.Connect(traj_thanos_block.get_output_port(), hardware_block.GetInputPort("iiwa_thanos_fake.position"))
     
     root_diagram = root_builder.Build()
     
