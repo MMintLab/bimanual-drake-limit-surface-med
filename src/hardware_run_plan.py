@@ -1,0 +1,83 @@
+from diagrams import create_hardware_diagram_plant_bimanual, create_visual_diagram
+from pydrake.all import (
+    StartMeshcat,
+    Simulator,
+    DiagramBuilder,
+    TrajectorySource,
+    PiecewisePolynomial
+)
+from load.sim_setup import load_iiwa_setup
+from pydrake.multibody.plant import MultibodyPlant, MultibodyPlantConfig, AddMultibodyPlant
+from pydrake.systems.framework import DiagramBuilder
+from pydrake.math import RigidTransform
+from pydrake.visualization import AddDefaultVisualization
+from manipulation.scenarios import AddMultibodyTriad
+from pydrake.all import Quaternion
+import numpy as np
+from planning.ik_util import solve_ik_inhand, piecewise_joints, run_full_inhand_og, piecewise_traj
+import numpy as np
+JOINT_CONFIG0 = [-1.4642257757338084, 0.8127952846992316, 1.1610759564974569, -1.7215104030300545, 0.7437206476347523, -1.5028261863351888, 0.40010896328253853,
+                 -0.06488413511644758, 0.8559780917451022, 1.0589908460792608, -1.6911165549110803, 1.6810950730858496, 0.5645849851582659, -1.0119527295456705]
+
+JOINT0_THANOS = np.array([JOINT_CONFIG0[:7]]).flatten()
+JOINT0_MEDUSA = np.array([JOINT_CONFIG0[7:14]]).flatten()
+GAP=0.48
+# JOINT0 = np.zeros(7)
+
+if __name__ == '__main__':
+    meshcat = StartMeshcat()
+    scenario_file = "../config/bimanual_med_hardware.yaml"
+    directives_file = "../config/bimanual_med.yaml"
+    
+    root_builder = DiagramBuilder()
+    
+    hardware_diagram, hardware_plant = create_hardware_diagram_plant_bimanual(scenario_filepath=scenario_file, meshcat=meshcat, position_only=True)
+    vis_diagram = create_visual_diagram(directives_filepath=directives_file, meshcat=meshcat, package_file="../package.xml")
+    
+    hardware_block = root_builder.AddSystem(hardware_diagram)
+    
+    plant_arms = MultibodyPlant(1e-3) # time step
+    load_iiwa_setup(plant_arms, package_file='../package.xml', directive_path="../config/bimanual_med.yaml")
+    plant_arms.Finalize()
+    
+    plant_context = plant_arms.CreateDefaultContext()
+    plant_arms.SetPositions(plant_context, plant_arms.GetModelInstanceByName("iiwa_thanos"), JOINT_CONFIG0[:7])
+    plant_arms.SetPositions(plant_context, plant_arms.GetModelInstanceByName("iiwa_medusa"), JOINT_CONFIG0[7:14])
+    
+    left_pose0 = plant_arms.EvalBodyPoseInWorld(plant_context, plant_arms.GetBodyByName("iiwa_link_7", plant_arms.GetModelInstanceByName("iiwa_thanos")))
+    right_pose0 = plant_arms.EvalBodyPoseInWorld(plant_context, plant_arms.GetBodyByName("iiwa_link_7", plant_arms.GetModelInstanceByName("iiwa_medusa")))
+    gap = GAP
+    
+    object_pose0 = RigidTransform(left_pose0.rotation().ToQuaternion(), left_pose0.translation() + left_pose0.rotation().matrix() @ np.array([0,0,gap/2.0]))
+    
+    desired_obj2left_se2 = np.array([0.00, 0.0, 0])
+    desired_obj2right_se2 = np.array([0.00, 0.0, np.pi])
+    
+    ts, left_poses, right_poses, obj_poses = run_full_inhand_og(desired_obj2left_se2, desired_obj2right_se2, left_pose0, right_pose0, object_pose0, rotation=np.pi/6, rotate_steps=10, rotate_time=20.0, se2_time=5.0, back_time=20.0, fix_right=False)
+    left_piecewise, right_piecewise, _ = piecewise_traj(ts, left_poses, right_poses, obj_poses)
+    T = ts[-1]    
+    ts = np.linspace(0, T, 1_000)
+    seed_q0 = JOINT_CONFIG0
+    qs = solve_ik_inhand(plant_arms, ts, left_piecewise, right_piecewise, "thanos_finger", "medusa_finger", seed_q0)
+    qs_medusa = qs[:, 7:14]
+    qs_thanos = qs[:, :7]
+    
+    traj_medusa = PiecewisePolynomial.FirstOrderHold(ts, qs_medusa.T)
+    
+    
+    traj_thanos = PiecewisePolynomial.FirstOrderHold(ts, qs_thanos.T)
+    
+    traj_medusa_block = root_builder.AddSystem(TrajectorySource(traj_medusa))
+    root_builder.Connect(traj_medusa_block.get_output_port(), hardware_block.GetInputPort("iiwa_medusa.position"))
+    root_builder.Connect(traj_medusa_block.get_output_port(), hardware_block.GetInputPort("iiwa_medusa_fake.position"))
+    
+    traj_thanos_block = root_builder.AddSystem(TrajectorySource(traj_thanos))
+    root_builder.Connect(traj_thanos_block.get_output_port(), hardware_block.GetInputPort("iiwa_thanos.position"))
+    root_builder.Connect(traj_thanos_block.get_output_port(), hardware_block.GetInputPort("iiwa_thanos_fake.position"))
+    
+    root_diagram = root_builder.Build()
+    
+    # run simulation
+    simulator = Simulator(root_diagram)
+    simulator.set_target_realtime_rate(1.0)
+    simulator.AdvanceTo(T + 5.0)

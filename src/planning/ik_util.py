@@ -57,7 +57,7 @@ def CalculateRotation(pose: RigidTransform, object_pose: RigidTransform, desired
     Hobj2ee = np.linalg.inv(Hee2world) @ Hobj2world
     
     # rotate object to get new object-> world
-    rot = RotationMatrix.MakeYRotation(desired_rotation).matrix()
+    rot = RotationMatrix.MakeXRotation(desired_rotation).matrix()
     Hobj2world[:3, :3] = Hobj2world[:3, :3] @ rot # rotate around its y-axis from its current frame
     
     # calculate new ee -> world based on rotated object-> world
@@ -151,7 +151,7 @@ def inhand_rotate_poses(rotation: float, reference_pose: RigidTransform, ts: Lis
     rotated_left, rotated_right, rotated_object = inhand_rotate(left_poses[-1], right_poses[-1], tmp2world, rotation, steps=steps)
     
     # hacky way to rotate the object
-    rotated_object = [RigidTransform(tmp2world.rotation() @ RotationMatrix.MakeYRotation(angle), tmp2world.translation()) @ obj2tmp for angle in np.linspace(0, rotation, steps)]
+    rotated_object = [RigidTransform(tmp2world.rotation() @ RotationMatrix.MakeXRotation(angle), tmp2world.translation()) @ obj2tmp for angle in np.linspace(0, rotation, steps)]
     
     rotated_ts = np.linspace(ts[-1] + 1e-4, ts[-1] + rotate_time, steps)
     
@@ -246,17 +246,17 @@ def get_desired_acceleration(qs: np.ndarray, force_desired, plant_arms):
         M = plant_arms.CalcMassMatrixViaInverseDynamics(plant_context)
         # C = plant_arms.CalcBiasTerm(plant_context)
 
-        left_pose = plant_arms.GetFrameByName("left_finger").CalcPoseInWorld(plant_context)
-        right_pose = plant_arms.GetFrameByName("right_finger").CalcPoseInWorld(plant_context)
+        left_pose = plant_arms.GetFrameByName("thanos_finger").CalcPoseInWorld(plant_context)
+        right_pose = plant_arms.GetFrameByName("medusa_finger").CalcPoseInWorld(plant_context)
         left_rot = left_pose.rotation().matrix()
         right_rot = right_pose.rotation().matrix()
 
         force_desired_left = left_rot @ force_desired
         force_desired_right = right_rot @ force_desired
 
-        Jleft = plant_arms.CalcJacobianSpatialVelocity(plant_context, JacobianWrtVariable.kQDot, plant_arms.GetFrameByName("left_finger"), [0,0,0], plant_arms.world_frame(), plant_arms.world_frame())
+        Jleft = plant_arms.CalcJacobianSpatialVelocity(plant_context, JacobianWrtVariable.kQDot, plant_arms.GetFrameByName("thanos_finger"), [0,0,0], plant_arms.world_frame(), plant_arms.world_frame())
         Jleft = Jleft[3:, :7] # jacobian for linear component with left arm
-        Jright = plant_arms.CalcJacobianSpatialVelocity(plant_context, JacobianWrtVariable.kQDot, plant_arms.GetFrameByName("right_finger"), [0,0,0], plant_arms.world_frame(), plant_arms.world_frame())
+        Jright = plant_arms.CalcJacobianSpatialVelocity(plant_context, JacobianWrtVariable.kQDot, plant_arms.GetFrameByName("medusa_finger"), [0,0,0], plant_arms.world_frame(), plant_arms.world_frame())
         Jright = Jright[3:, 7:] # jacobian for linear component with right arm
         
         tau_left = Jleft.T @ force_desired_left
@@ -292,99 +292,9 @@ def solve_ik_inhand(plant: MultibodyPlant, ts: np.ndarray, left_piecewise: Piece
 def piecewise_joints(ts: List[float], qs: List[np.ndarray]) -> PiecewiseTrajectory:
     #first order hold piecewise
     return PiecewisePolynomial.FirstOrderHold(ts, qs.T)
-
-def solveIK_Follower(plant: MultibodyPlant, pose: RigidTransform, left_frame_name: str, right_frame_name: str, q0=1e-10*np.ones(14), gap=0.035, left=False):
-    '''
-        given a pose and specified whether left or right arm moves
-        
-        move one arm to specified pose.
-        other arm will follow the first arm and maintain relative transform
-    '''
+def piecewise_joints_separate(ts: List[float], qs: List[np.ndarray]) -> PiecewiseTrajectory:
+    #first order hold piecewise but split into thanos and medusa
+    thanos = qs[:, :7]
+    medusa = qs[:, 7:]
+    return PiecewisePolynomial.FirstOrderHold(ts, thanos.T), PiecewisePolynomial.FirstOrderHold(ts, medusa.T)
     
-    ik = InverseKinematics(plant, with_joint_limits=True)
-    
-    #ensure that the arm is parallel to the other arm
-    ik.AddAngleBetweenVectorsConstraint(
-        frameA=plant.GetFrameByName(left_frame_name),
-        na_A=np.array([[0,0,1]]).T,
-        frameB=plant.GetFrameByName(right_frame_name),
-        nb_B=np.array([[0,0,1]]).T,
-        angle_lower=np.pi,
-        angle_upper=np.pi
-    )
-    #ensure both arms have a gap between them in z direction
-    ik.AddPositionConstraint(
-        plant.GetFrameByName(right_frame_name),
-        np.array([0,0,0]),
-        plant.GetFrameByName(left_frame_name),
-        np.array([-10,-10,gap]),
-        np.array([10,10,gap])
-    )
-    ik.AddPositionConstraint(
-        plant.GetFrameByName(left_frame_name),
-        np.array([0,0,0]),
-        plant.GetFrameByName(right_frame_name),
-        np.array([-10,-10,gap]),
-        np.array([10,10,gap])
-    )
-    
-    if left:
-        leader_frame = left_frame_name
-        follower_frame = right_frame_name
-    else:
-        leader_frame = right_frame_name
-        follower_frame = left_frame_name
-        
-    #move leader arm to specified pose
-    ik.AddPositionConstraint(
-        plant.GetFrameByName(leader_frame),
-        np.array([0,0,0]),
-        plant.world_frame(),
-        pose.translation(),
-        pose.translation()
-    )
-    ik.AddOrientationConstraint(
-        plant.GetFrameByName(leader_frame),
-        RotationMatrix(RollPitchYaw(0,0,0)),
-        plant.world_frame(),
-        pose.rotation(),
-        0.0
-    )
-    
-    #follower arm should follow leader arm and hold relative transform in SE(2)
-    plant_context = plant.CreateDefaultContext()
-    plant.SetPositions(plant_context, q0)
-    leader_pose = plant.GetFrameByName(leader_frame).CalcPoseInWorld(plant_context)
-    follower_pose = plant.GetFrameByName(follower_frame).CalcPoseInWorld(plant_context)
-    follower2leader = leader_pose.inverse() @ follower_pose # relative transform from follower to target
-    yaw_follower2leader = RotationMatrix.MakeZRotation(RollPitchYaw(follower2leader.rotation()).yaw_angle() + np.pi)
-    
-    ik.AddPositionConstraint(
-        plant.GetFrameByName(follower_frame),
-        np.array([0,0,0]),
-        plant.GetFrameByName(leader_frame),
-        np.array([follower2leader.translation()[0], follower2leader.translation()[1], gap]),
-        np.array([follower2leader.translation()[0], follower2leader.translation()[1], gap])
-    )
-    ik.AddOrientationConstraint(
-        plant.GetFrameByName(follower_frame),
-        RotationMatrix(RollPitchYaw(0,0,0)),
-        plant.GetFrameByName(leader_frame),
-        yaw_follower2leader @ RotationMatrix.MakeYRotation(np.pi),
-        0.0
-    )
-    
-    prog = ik.get_mutable_prog()
-    q = ik.q()
-    if np.abs(q0).sum() > 1e-4:
-        prog.AddQuadraticErrorCost(np.eye(14),q0,q)
-    prog.SetInitialGuess(q,q0)
-    solver = SnoptSolver()
-    print("Solving Ik...")
-    result = solver.Solve(prog)
-    if result.is_success():
-        print("Success Ik")
-        return result.GetSolution()
-    else:
-        print("Failed to solve solveIK_Follower")
-        return q0
