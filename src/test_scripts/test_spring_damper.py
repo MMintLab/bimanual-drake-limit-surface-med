@@ -43,7 +43,14 @@ def setup_plant(plant: MultibodyPlant, scene_graph: SceneGraph = None):
                 damping=100.0
             )
         )    
-        plant.AddForceElement(PrismaticSpring(finger_z_joint, 0.2375 - 0.01/2.0, 5000.0))
+        
+        # measured 3.31 kg / 5mm
+        # so 3.62 kg / 1cm
+        # so 36.2 kg / 1m
+        # so 355.846 N / 1m
+        # object is 0.682 kg
+        # so spring stiffness is 521.7 N/m
+        plant.AddForceElement(PrismaticSpring(finger_z_joint, 0.2375 - 0.01/2.0, 521.7))
         
         obj_instance = AddBox(plant, "box", lwh=(box_width, box_width, box_width), mass=obj_mass, mu=1.0, color=[0,1,0,1])
     # offset = RigidTransform(np.array([0.0, 0.0, 0.2375 - 0.01/2]))
