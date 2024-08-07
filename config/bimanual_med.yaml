@@ -30,7 +30,7 @@ directives:
         name: iiwa_medusa_origin
         X_PF:
             base_frame: world
-            translation: [-0.03, -1.31, 0.03]
+            translation: [0, 1.2192, 0]
     - add_weld:
         parent: iiwa_medusa_origin
         child: iiwa_medusa::base

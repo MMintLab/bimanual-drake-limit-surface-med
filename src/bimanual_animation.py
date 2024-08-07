@@ -11,10 +11,10 @@ from pydrake.all import Quaternion
 import numpy as np
 from planning.ik_util import solve_ik_inhand, piecewise_joints, run_full_inhand_og, piecewise_traj
 
-JOINT_CONFIG0 = [-1.4642257757338084, 0.8127952846992316, 1.1610759564974569, -1.7215104030300545, 0.7437206476347523, -1.5028261863351888, 0.40010896328253853,
-                 -0.06488413511644758, 0.8559780917451022, 1.0589908460792608, -1.6911165549110803, 1.6810950730858496, 0.5645849851582659, -1.0119527295456705]
+JOINT_CONFIG0 = [-0.32823683178594826, 0.9467527057457398, 1.5375963846252783, -2.055496608537348, -0.8220809597822779, -0.31526250680171636, 1.3872151028590527,
+                 -1.7901817338098867, 1.2653964889934661, 1.740960078785441, -2.014334314596287, 0.35305405885912783, -1.8242723561461582, -0.01502208888994321]
 
-GAP = 0.48
+GAP = 0.475
 
 if __name__ == '__main__':
     config = MultibodyPlantConfig()
@@ -59,10 +59,10 @@ if __name__ == '__main__':
 
     # get panda config 
     
-    desired_obj2left_se2 = np.array([0.00, 0.0, 0])
-    desired_obj2right_se2 = np.array([0.00, 0.0, np.pi])
+    desired_obj2left_se2 = np.array([0.0, -0.03, 0])
+    desired_obj2right_se2 = np.array([0.0, -0.03, np.pi])
     
-    ts, left_poses, right_poses, obj_poses = run_full_inhand_og(desired_obj2left_se2, desired_obj2right_se2, left_pose0, right_pose0, object_pose0, rotation=np.pi/6, rotate_steps=10, rotate_time=10.0, se2_time=10.0, back_time=10.0, fix_right=False)
+    ts, left_poses, right_poses, obj_poses = run_full_inhand_og(desired_obj2left_se2, desired_obj2right_se2, left_pose0, right_pose0, object_pose0, rotation=np.pi/3, rotate_steps=10, rotate_time=10.0, se2_time=10.0, back_time=10.0, fix_right=False)
     left_piecewise, right_piecewise, _ = piecewise_traj(ts, left_poses, right_poses, obj_poses)
     T = ts[-1]
     

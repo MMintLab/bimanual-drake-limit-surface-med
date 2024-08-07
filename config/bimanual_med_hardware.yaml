@@ -12,9 +12,6 @@ Demo:
               iiwa_joint_5: [0]
               iiwa_joint_6: [0]
               iiwa_joint_7: [0]
-      - add_weld:
-          parent: world
-          child: iiwa_medusa::base
       # Add iiwa_thanos
       - add_model:
           name: iiwa_thanos
@@ -28,12 +25,15 @@ Demo:
               iiwa_joint_6: [0]
               iiwa_joint_7: [0]
       - add_frame:
-          name: iiwa_thanos_origin
+          name: iiwa_medusa_origin
           X_PF:
-            base_frame: world
-            translation: [0.03, 1.31, -0.03]
+              base_frame: world
+              translation: [0, 1.2192, 0]
       - add_weld:
-          parent: iiwa_thanos_origin
+          parent: iiwa_medusa_origin
+          child: iiwa_medusa::base
+      - add_weld:
+          parent: world
           child: iiwa_thanos::base
       # Add finger frames
       - add_frame:

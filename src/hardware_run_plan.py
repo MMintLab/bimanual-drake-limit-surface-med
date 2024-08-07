@@ -16,12 +16,12 @@ from pydrake.all import Quaternion
 import numpy as np
 from planning.ik_util import solve_ik_inhand, piecewise_joints, run_full_inhand_og, piecewise_traj
 import numpy as np
-JOINT_CONFIG0 = [-1.4642257757338084, 0.8127952846992316, 1.1610759564974569, -1.7215104030300545, 0.7437206476347523, -1.5028261863351888, 0.40010896328253853,
-                 -0.06488413511644758, 0.8559780917451022, 1.0589908460792608, -1.6911165549110803, 1.6810950730858496, 0.5645849851582659, -1.0119527295456705]
+JOINT_CONFIG0 = [-0.32823683178594826, 0.9467527057457398, 1.5375963846252783, -2.055496608537348, -0.8220809597822779, -0.31526250680171636, 1.3872151028590527,
+                 -1.7901817338098867, 1.2653964889934661, 1.740960078785441, -2.014334314596287, 0.35305405885912783, -1.8242723561461582, -0.01502208888994321]
 
+GAP = 0.475
 JOINT0_THANOS = np.array([JOINT_CONFIG0[:7]]).flatten()
 JOINT0_MEDUSA = np.array([JOINT_CONFIG0[7:14]]).flatten()
-GAP=0.48
 # JOINT0 = np.zeros(7)
 
 if __name__ == '__main__':
@@ -50,21 +50,19 @@ if __name__ == '__main__':
     
     object_pose0 = RigidTransform(left_pose0.rotation().ToQuaternion(), left_pose0.translation() + left_pose0.rotation().matrix() @ np.array([0,0,gap/2.0]))
     
-    desired_obj2left_se2 = np.array([0.00, 0.0, 0])
-    desired_obj2right_se2 = np.array([0.00, 0.0, np.pi])
+    desired_obj2left_se2 = np.array([0.00, -0.03, 0.0])
+    desired_obj2right_se2 = np.array([0.00, -0.03, np.pi])
     
-    ts, left_poses, right_poses, obj_poses = run_full_inhand_og(desired_obj2left_se2, desired_obj2right_se2, left_pose0, right_pose0, object_pose0, rotation=np.pi/6, rotate_steps=10, rotate_time=20.0, se2_time=5.0, back_time=20.0, fix_right=False)
+    ts, left_poses, right_poses, obj_poses = run_full_inhand_og(desired_obj2left_se2, desired_obj2right_se2, left_pose0, right_pose0, object_pose0, rotation=np.pi/3, rotate_steps=10, rotate_time=30.0, se2_time=5.0, back_time=10.0, fix_right=False)
     left_piecewise, right_piecewise, _ = piecewise_traj(ts, left_poses, right_poses, obj_poses)
     T = ts[-1]    
     ts = np.linspace(0, T, 1_000)
     seed_q0 = JOINT_CONFIG0
     qs = solve_ik_inhand(plant_arms, ts, left_piecewise, right_piecewise, "thanos_finger", "medusa_finger", seed_q0)
-    qs_medusa = qs[:, 7:14]
     qs_thanos = qs[:, :7]
+    qs_medusa = qs[:, 7:14]
     
     traj_medusa = PiecewisePolynomial.FirstOrderHold(ts, qs_medusa.T)
-    
-    
     traj_thanos = PiecewisePolynomial.FirstOrderHold(ts, qs_thanos.T)
     
     traj_medusa_block = root_builder.AddSystem(TrajectorySource(traj_medusa))
