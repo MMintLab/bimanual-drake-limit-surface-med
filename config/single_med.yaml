@@ -3,7 +3,7 @@ directives:
 # Add iiwa
 - add_model:
     name: iiwa
-    file: package://bimanual_med/urdf/med.urdf
+    file: package://bimanual/urdf/med.urdf
     
 - add_weld:
     parent: world
