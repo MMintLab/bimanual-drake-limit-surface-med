@@ -59,8 +59,8 @@ if __name__ == '__main__':
 
     # get panda config 
     
-    desired_obj2left_se2 = np.array([0.0, -0.03, 0])
-    desired_obj2right_se2 = np.array([0.0, -0.03, np.pi])
+    desired_obj2left_se2 = np.array([0.00, 0.03, 0.0])
+    desired_obj2right_se2 = np.array([0.03, 0.00, np.pi])
     
     ts, left_poses, right_poses, obj_poses = run_full_inhand_og(desired_obj2left_se2, desired_obj2right_se2, left_pose0, right_pose0, object_pose0, rotation=np.pi/3, rotate_steps=10, rotate_time=10.0, se2_time=10.0, back_time=10.0, fix_right=False)
     left_piecewise, right_piecewise, _ = piecewise_traj(ts, left_poses, right_poses, obj_poses)
