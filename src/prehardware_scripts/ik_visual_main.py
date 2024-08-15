@@ -3,7 +3,7 @@ from pydrake.systems.framework import DiagramBuilder
 from pydrake.multibody.plant import MultibodyPlantConfig, AddMultibodyPlant
 from pydrake.geometry import StartMeshcat
 from pydrake.all import MeshcatVisualizerParams, MeshcatVisualizer
-from manipulation.meshcat_utils import MeshcatPoseSliders
+from manipulation.meshcat_utils import _MeshcatPoseSliders
 from manipulation.scenarios import AddMultibodyTriad
 from pydrake.math import RigidTransform, RotationMatrix, RollPitchYaw
 from collections import namedtuple
@@ -21,7 +21,7 @@ class InteractiveArm:
         meshcat = StartMeshcat()
         builder = DiagramBuilder()
         plant, scene_graph = AddMultibodyPlant(config, builder)
-        load_iiwa_setup(plant, scene_graph, package_file='../package.xml', directive_path="../config/bimanual_med.yaml")
+        load_iiwa_setup(plant, scene_graph, package_file='../../package.xml', directive_path="../../config/bimanual_med.yaml")
         #no grav
         plant.mutable_gravity_field().set_gravity_vector([0, 0, 0])
         
@@ -64,6 +64,7 @@ class InteractiveArm:
                 print("Medusa") 
                 print(sol[7:].tolist())
                 print()
+                print(sol.tolist())
             else:
                 print("Fail")
                 sol = np.zeros(14)
@@ -75,9 +76,9 @@ class InteractiveArm:
         MinRange.__new__.__defaults__ = (0, 0, 0, 0.0, 0.0, 0.0)
         MaxRange = namedtuple("MaxRange", ("roll", "pitch", "yaw", "x", "y", "z"))
         MaxRange.__new__.__defaults__ = (np.pi, 0, 0, 1.0, 1.0, 2.0)
-        sliders = MeshcatPoseSliders(meshcat,min_range=MinRange(), max_range=MaxRange())
+        sliders = _MeshcatPoseSliders(meshcat,min_range=MinRange(), max_range=MaxRange())
 
-        init_pose = RigidTransform(RollPitchYaw(np.pi/2, 0, 0), [0.4, 0.5, 0.5])
+        init_pose = RigidTransform(RollPitchYaw(np.pi/2, 0, 0), [0.32, 0.6096, 0.45])
         sliders.SetPose(init_pose)
         sliders.Run(visualizer, context, callback)
         
