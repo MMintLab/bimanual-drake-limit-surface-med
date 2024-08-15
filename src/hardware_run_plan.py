@@ -16,16 +16,16 @@ from pydrake.all import Quaternion
 import numpy as np
 from planning.ik_util import solve_ik_inhand, piecewise_joints, run_full_inhand_og, piecewise_traj
 import numpy as np
-# JOINT_CONFIG0 = [-0.32823683178594826, 0.9467527057457398, 1.5375963846252783, -2.055496608537348, -0.8220809597822779, -0.31526250680171636, 1.3872151028590527,
-#                  -1.7901817338098867, 1.2653964889934661, 1.740960078785441, -2.014334314596287, 0.35305405885912783, -1.8242723561461582, -0.01502208888994321]
-JOINT_PUSHED0 = [-0.2643785411955492, 0.9298086509635983, 1.4995078330737035, -2.0178285851796245, -0.7956487782329831, -0.33073534353598244, 1.3776540552821948, 
-                 -1.8013266922213016, 1.2733419322042039, 1.7303881921586168, -1.975218704173754, 0.33999535648913914, -1.772941644931603, -0.0229759501547755]
+JOINT_CONFIG0 = [-0.32823683178594826, 0.9467527057457398, 1.5375963846252783, -2.055496608537348, -0.8220809597822779, -0.31526250680171636, 1.3872151028590527,
+                 -1.7901817338098867, 1.2653964889934661, 1.740960078785441, -2.014334314596287, 0.35305405885912783, -1.8242723561461582, -0.01502208888994321]
+# JOINT_PUSHED0 = [-0.2643785411955492, 0.9298086509635983, 1.4995078330737035, -2.0178285851796245, -0.7956487782329831, -0.33073534353598244, 1.3776540552821948, 
+#                  -1.8013266922213016, 1.2733419322042039, 1.7303881921586168, -1.975218704173754, 0.33999535648913914, -1.772941644931603, -0.0229759501547755]
 
 GAP = 0.475
 PUSH_DISTANCE = 0.025
 
-JOINT0_THANOS = np.array([JOINT_PUSHED0[:7]]).flatten()
-JOINT0_MEDUSA = np.array([JOINT_PUSHED0[7:14]]).flatten()
+JOINT0_THANOS = np.array([JOINT_CONFIG0[:7]]).flatten()
+JOINT0_MEDUSA = np.array([JOINT_CONFIG0[7:14]]).flatten()
 # JOINT0 = np.zeros(7)
 
 if __name__ == '__main__':
@@ -54,8 +54,8 @@ if __name__ == '__main__':
     plant_arms.Finalize()
     
     plant_context = plant_arms.CreateDefaultContext()
-    plant_arms.SetPositions(plant_context, plant_arms.GetModelInstanceByName("iiwa_thanos"), JOINT_PUSHED0[:7])
-    plant_arms.SetPositions(plant_context, plant_arms.GetModelInstanceByName("iiwa_medusa"), JOINT_PUSHED0[7:14])
+    plant_arms.SetPositions(plant_context, plant_arms.GetModelInstanceByName("iiwa_thanos"), JOINT_CONFIG0[:7])
+    plant_arms.SetPositions(plant_context, plant_arms.GetModelInstanceByName("iiwa_medusa"), JOINT_CONFIG0[7:14])
     
     left_pose0 = plant_arms.EvalBodyPoseInWorld(plant_context, plant_arms.GetBodyByName("iiwa_link_7", plant_arms.GetModelInstanceByName("iiwa_thanos")))
     right_pose0 = plant_arms.EvalBodyPoseInWorld(plant_context, plant_arms.GetBodyByName("iiwa_link_7", plant_arms.GetModelInstanceByName("iiwa_medusa")))
@@ -70,7 +70,7 @@ if __name__ == '__main__':
     left_piecewise, right_piecewise, _ = piecewise_traj(ts, left_poses, right_poses, obj_poses)
     T = ts[-1]    
     ts = np.linspace(0, T, 1_000)
-    seed_q0 = JOINT_PUSHED0
+    seed_q0 = JOINT_CONFIG0
     qs = solve_ik_inhand(plant_arms, ts, left_piecewise, right_piecewise, "thanos_finger", "medusa_finger", seed_q0)
     qs_thanos = qs[:, :7]
     qs_medusa = qs[:, 7:14]

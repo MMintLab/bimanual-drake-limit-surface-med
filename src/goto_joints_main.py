@@ -14,7 +14,7 @@ JOINT_CONFIG0 = [-0.32823683178594826, 0.9467527057457398, 1.5375963846252783, -
 JOINT0_THANOS = np.array([JOINT_CONFIG0[:7]]).flatten()
 JOINT0_MEDUSA = np.array([JOINT_CONFIG0[7:14]]).flatten()
 
-ENDTIME = 60.0
+ENDTIME = 30.0
 if __name__ == '__main__':
     meshcat = StartMeshcat()
     scenario_file = "../config/bimanual_med_hardware.yaml"
