@@ -14,7 +14,7 @@ from pydrake.all import (
 )
 from manipulation.station import MakeHardwareStation, MakeHardwareStationInterface, load_scenario
 from typing import Tuple
-def get_hardware_blocks(hardware_builder, scenario, meshcat, package_file='./package.xml'):
+def get_hardware_blocks(hardware_builder, scenario, meshcat = None, package_file='./package.xml'):
     real_station = hardware_builder.AddNamedSystem(
         "real_station",
         MakeHardwareStationInterface(
@@ -76,10 +76,10 @@ def create_hardware_diagram_plant(scenario_filepath, meshcat, position_only=True
     hardware_diagram = hardware_builder.Build()
     return hardware_diagram, hardware_plant
 
-def create_hardware_diagram_plant_bimanual(scenario_filepath, meshcat, position_only=True) -> Tuple[Diagram, MultibodyPlant]:
+def create_hardware_diagram_plant_bimanual(scenario_filepath, meshcat = None, position_only=True) -> Tuple[Diagram, MultibodyPlant]:
     hardware_builder = DiagramBuilder()
     scenario = load_scenario(filename=scenario_filepath, scenario_name="Demo")
-    real_station, fake_station = get_hardware_blocks(hardware_builder, scenario, meshcat, package_file='../package.xml')
+    real_station, fake_station = get_hardware_blocks(hardware_builder, scenario, meshcat, package_file='../../package.xml')
     
     hardware_plant = fake_station.GetSubsystemByName("plant")
     
