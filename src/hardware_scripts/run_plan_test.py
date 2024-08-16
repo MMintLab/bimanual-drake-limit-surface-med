@@ -7,13 +7,12 @@ import numpy as np
 
 import sys
 sys.path.append('..')
-from planning.ik_util import solve_ik_inhand, piecewise_joints, inhand_test, piecewise_traj, solveDualIK
-from diagrams import create_hardware_diagram_plant_bimanual, create_visual_diagram
+from planning.ik_util import solve_ik_inhand, inhand_test, piecewise_traj
 from load.sim_setup import load_iiwa_setup
-from run_plan_main import curr_joints, goto_joints, generate_push_configuration, follow_trajectory
+from run_plan_main import curr_joints, goto_joints, follow_trajectory
 
-JOINT_CONFIG0   = [1.091627175380399, 0.7504935659013866, -0.03066493117212439, -0.641208649724199, 0.02125370004032286, 1.7500789182727032, 1.0729869938631913,
-                   -1.464729579371752, 1.758801739349052, 1.028649487365105, -0.8291452599791955, -1.3322962015581077, -2.0943951023905, 0.6473815288375726]
+JOINT_CONFIG0   = [0.8057998785688361, 0.843834930898186, 0.8817375343174186, -0.6412127704101249, 2.5038478567698452, -1.8218295137005034, -1.838969954216997,
+                   -1.4647284816944872, 1.7587974000473647, 1.0286391175807714, -0.829148254439125, -1.3322830063140652, -2.0943951023869016, 0.64738334805492]
 
 def generate_traj(q0, desired_obj2left_se2 = np.array([0.00, 0.03, 0.0]), gap = 0.475):
     plant_arms = MultibodyPlant(1e-3) # time step
@@ -46,10 +45,14 @@ if __name__ == '__main__':
     
     curr_q = curr_joints()
     des_q = JOINT_CONFIG0
+    curr_q_thanos = curr_q[:7]
+    curr_q_medusa = curr_q[7:14]
     des_q_thanos = des_q[:7]
     des_q_medusa = des_q[7:14]
     
-    input("Press Enter to reset kuka arms.")
+    input("Press Enter to reset medusa arm.")
+    goto_joints(curr_q_thanos, des_q_medusa, endtime = 60.0)
+    input("Press Enter to reset thanos arm.")
     goto_joints(des_q_thanos, des_q_medusa, endtime = 60.0)
     
     curr_q = curr_joints()
