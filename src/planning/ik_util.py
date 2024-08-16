@@ -298,3 +298,13 @@ def piecewise_joints_separate(ts: List[float], qs: List[np.ndarray]) -> Piecewis
     medusa = qs[:, 7:]
     return PiecewisePolynomial.FirstOrderHold(ts, thanos.T), PiecewisePolynomial.FirstOrderHold(ts, medusa.T)
     
+def inhand_test(desired_obj2left_se2: np.ndarray, left_pose0: RigidTransform, right_pose0: RigidTransform, object_pose0: RigidTransform, se2_time = 10.0):
+    left_poses = [left_pose0]
+    right_poses = [right_pose0]
+    obj_poses = [object_pose0]
+    ts = [0.0]
+    ts, left_poses, right_poses, obj_poses = pause_for(1.0, ts, left_poses, right_poses, obj_poses)
+    ts, left_poses, right_poses, obj_poses = inhand_se2_poses(desired_obj2left_se2, ts, left_poses, right_poses, obj_poses, left=False, se2_time=se2_time)
+    ts, left_poses, right_poses, obj_poses = pause_for(2.0, ts, left_poses, right_poses, obj_poses)
+    
+    return ts, left_poses, right_poses, obj_poses

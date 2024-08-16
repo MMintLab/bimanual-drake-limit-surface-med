@@ -3,7 +3,7 @@ from pydrake.systems.framework import DiagramBuilder
 from pydrake.multibody.plant import MultibodyPlantConfig, AddMultibodyPlant
 from pydrake.geometry import StartMeshcat
 from pydrake.all import MeshcatVisualizerParams, MeshcatVisualizer
-from manipulation.meshcat_utils import MeshcatPoseSliders
+from manipulation.meshcat_utils import _MeshcatPoseSliders
 from manipulation.scenarios import AddMultibodyTriad
 from pydrake.math import RigidTransform, RotationMatrix, RollPitchYaw
 from collections import namedtuple
@@ -77,7 +77,7 @@ class InteractiveArm:
         MinRange.__new__.__defaults__ = (0, 0, 0, 0.0, 0.0, 0.0)
         MaxRange = namedtuple("MaxRange", ("roll", "pitch", "yaw", "x", "y", "z"))
         MaxRange.__new__.__defaults__ = (np.pi, 0, 0, 1.0, 1.0, 2.0)
-        sliders = MeshcatPoseSliders(meshcat,min_range=MinRange(), max_range=MaxRange())
+        sliders = _MeshcatPoseSliders(meshcat,min_range=MinRange(), max_range=MaxRange())
 
         init_pose = RigidTransform(RollPitchYaw(np.pi/2, 0, 0), [0.32, 0.6096, 0.42])
         sliders.SetPose(init_pose)

@@ -12,12 +12,12 @@ from pydrake.all import (
     MeshcatVisualizer,
     Diagram
 )
-from manipulation.station import MakeHardwareStation, MakeHardwareStationInterface, load_scenario
+from manipulation.station import MakeHardwareStation, _MakeHardwareStationInterface, load_scenario
 from typing import Tuple
 def get_hardware_blocks(hardware_builder, scenario, meshcat = None, package_file='./package.xml'):
     real_station = hardware_builder.AddNamedSystem(
         "real_station",
-        MakeHardwareStationInterface(
+        _MakeHardwareStationInterface(
             scenario,
             meshcat=meshcat,
             package_xmls=[package_file]
