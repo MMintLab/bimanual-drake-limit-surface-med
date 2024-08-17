@@ -6,7 +6,7 @@ from pydrake.solvers import SnoptSolver
 from pydrake.all import PiecewisePose, PiecewiseTrajectory, Quaternion, PiecewisePolynomial, JacobianWrtVariable
 from typing import List
 
-def solveDualIK(plant: MultibodyPlant, left_pose: RigidTransform, right_pose: RigidTransform, left_frame_name: str, right_frame_name: str, q0=1e-10*np.ones(14), gap=0.48):
+def solveDualIK(plant: MultibodyPlant, left_pose: RigidTransform, right_pose: RigidTransform, left_frame_name: str, right_frame_name: str, q0=1e-10*np.ones(14)):
     ik = InverseKinematics(plant, with_joint_limits=True)
     ik.AddPositionConstraint(
         plant.GetFrameByName(left_frame_name),
@@ -282,7 +282,7 @@ def solve_ik_inhand(plant: MultibodyPlant, ts: np.ndarray, left_piecewise: Piece
     for t in ts:
         left_pose = RigidTransform(Quaternion(left_R_G.value(t)), left_p_G.value(t))
         right_pose = RigidTransform(Quaternion(right_R_G.value(t)), right_p_G.value(t))
-        q, success = solveDualIK(plant, left_pose, right_pose, left_frame_name=left_frame_name, right_frame_name=right_frame_name, q0=curr_q, gap=0.475)
+        q, success = solveDualIK(plant, left_pose, right_pose, left_frame_name=left_frame_name, right_frame_name=right_frame_name, q0=curr_q)
         if not success:
             raise ValueError("IK failed")
         qs.append(q)

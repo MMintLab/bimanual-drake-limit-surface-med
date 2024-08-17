@@ -156,7 +156,7 @@ def generate_push_configuration(seed_q0, gap = 0.475, push_distance = 0.025):
     new_medusa_rotation = thanos_pose.rotation() @ RollPitchYaw(0.0, np.pi, 0.0).ToRotationMatrix()
     new_medusa_pose = RigidTransform(new_medusa_rotation, thanos_pose.translation() - new_medusa_rotation.matrix() @ np.array([0,0, gap - push_distance]))
 
-    new_joints,_ = solveDualIK(plant_arms, new_thanos_pose, new_medusa_pose, "thanos_finger", "medusa_finger", q0=seed_q0, gap=0.475)
+    new_joints,_ = solveDualIK(plant_arms, new_thanos_pose, new_medusa_pose, "thanos_finger", "medusa_finger", q0=seed_q0)
     
     return new_joints
 
