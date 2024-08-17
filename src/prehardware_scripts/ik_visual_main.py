@@ -79,7 +79,7 @@ class InteractiveArm:
         MaxRange.__new__.__defaults__ = (np.pi, 0, 0, 1.0, 1.0, 2.0)
         sliders = MeshcatPoseSliders(meshcat,min_range=MinRange(), max_range=MaxRange())
 
-        init_pose = RigidTransform(RollPitchYaw(0, 0, 0), [0.32, 0.6096, 0.42])
+        init_pose = RigidTransform(RollPitchYaw(np.pi/2, 0, 0), [0.32, 0.6096, 0.42])
         sliders.SetPose(init_pose)
         sliders.Run(visualizer, context, callback)
         

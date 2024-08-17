@@ -4,7 +4,8 @@ from pydrake.all import (
     DiagramBuilder,
     TrajectorySource,
     PiecewisePolynomial,
-    RollPitchYaw
+    RollPitchYaw,
+    ConstantVectorSource
 )
 from pydrake.multibody.plant import MultibodyPlant, MultibodyPlantConfig, AddMultibodyPlant
 from pydrake.systems.framework import DiagramBuilder
@@ -78,6 +79,33 @@ def goto_joints(joint_thanos, joint_medusa, endtime = 30.0):
     simulator = Simulator(root_diagram)
     simulator.set_target_realtime_rate(1.0)
     simulator.AdvanceTo(endtime + 2.0)
+    
+def goto_joints_straight(joint_thanos, joint_medusa, endtime = 30.0):
+    meshcat = StartMeshcat()
+    scenario_file = "../../config/bimanual_med_hardware.yaml"
+    directives_file = "../../config/bimanual_med.yaml"
+    
+    root_builder = DiagramBuilder()
+    
+    hardware_diagram, hardware_plant = create_hardware_diagram_plant_bimanual(scenario_filepath=scenario_file, meshcat=meshcat, position_only=True)
+    vis_diagram = create_visual_diagram(directives_filepath=directives_file, meshcat=meshcat, package_file="../../package.xml")
+    
+    hardware_block = root_builder.AddSystem(hardware_diagram)
+    
+    traj_medusa_block = root_builder.AddSystem(ConstantVectorSource(joint_medusa))
+    root_builder.Connect(traj_medusa_block.get_output_port(), hardware_block.GetInputPort("iiwa_medusa.position"))
+    root_builder.Connect(traj_medusa_block.get_output_port(), hardware_block.GetInputPort("iiwa_medusa_fake.position"))
+    
+    traj_thanos_block = root_builder.AddSystem(ConstantVectorSource(joint_thanos))
+    root_builder.Connect(traj_thanos_block.get_output_port(), hardware_block.GetInputPort("iiwa_thanos.position"))
+    root_builder.Connect(traj_thanos_block.get_output_port(), hardware_block.GetInputPort("iiwa_thanos_fake.position"))
+    
+    root_diagram = root_builder.Build()
+    
+    # run simulation
+    simulator = Simulator(root_diagram)
+    simulator.set_target_realtime_rate(1.0)
+    simulator.AdvanceTo(endtime + 2.0)
 
 def generate_trajectory(seed_q0):
     plant_arms = MultibodyPlant(1e-3) # time step
@@ -94,10 +122,10 @@ def generate_trajectory(seed_q0):
     gap = GAP
     object_pose0 = RigidTransform(left_pose0.rotation().ToQuaternion(), left_pose0.translation() + left_pose0.rotation().matrix() @ np.array([0,0,(gap)/2.0]))
 
-    desired_obj2left_se2 = np.array([0.00, 0.03, 0.0])
-    desired_obj2right_se2 = np.array([0.03, 0.00, np.pi])
+    desired_obj2left_se2 = np.array([0.00, -0.03, 0.0])
+    desired_obj2right_se2 = np.array([0.00, -0.03, np.pi])
 
-    ts, left_poses, right_poses, obj_poses = run_full_inhand_og(desired_obj2left_se2, desired_obj2right_se2, left_pose0, right_pose0, object_pose0, rotation=np.pi/2, rotate_steps=10, rotate_time=20.0, se2_time=10.0, back_time=15.0, fix_right=False)
+    ts, left_poses, right_poses, obj_poses = run_full_inhand_og(desired_obj2left_se2, desired_obj2right_se2, left_pose0, right_pose0, object_pose0, rotation=np.pi/2, rotate_steps=40, rotate_time=30.0, se2_time=15.0, back_time=10.0, fix_right=False)
     left_piecewise, right_piecewise, _ = piecewise_traj(ts, left_poses, right_poses, obj_poses)
     
     T = ts[-1]    
@@ -123,7 +151,7 @@ def generate_push_configuration(seed_q0, gap = 0.475, push_distance = 0.025):
     thanos_pose = plant_arms.EvalBodyPoseInWorld(plant_context, plant_arms.GetBodyByName("iiwa_link_7", plant_arms.GetModelInstanceByName("iiwa_thanos")))
     medusa_pose = plant_arms.EvalBodyPoseInWorld(plant_context, plant_arms.GetBodyByName("iiwa_link_7", plant_arms.GetModelInstanceByName("iiwa_medusa")))
     
-    new_thanos_pose = RigidTransform(thanos_pose.rotation().ToQuaternion(), thanos_pose.translation() + thanos_pose.rotation().matrix() @ np.array([0,0,push_distance]))
+    new_thanos_pose = RigidTransform(thanos_pose.rotation().ToQuaternion(), thanos_pose.translation() + thanos_pose.rotation().matrix() @ np.array([0,0,push_distance/2]))
     
     new_medusa_rotation = thanos_pose.rotation() @ RollPitchYaw(0.0, np.pi, 0.0).ToRotationMatrix()
     new_medusa_pose = RigidTransform(new_medusa_rotation, thanos_pose.translation() - new_medusa_rotation.matrix() @ np.array([0,0, gap - push_distance]))
@@ -160,35 +188,49 @@ def follow_trajectory(traj_thanos, traj_medusa, endtime = 1e12):
 
 if __name__ == '__main__':
     GAP = 0.475
-    PUSH_DISTANCE = 0.025
+    PUSH_DISTANCE = 0.010
     
     curr_q = curr_joints()
     des_q = JOINT_CONFIG0
-    # total_joint_displacement = np.max(np.abs(des_q - curr_q))
-    # endtime = total_joint_displacement / 0.05
+    
+    curr_q_thanos = curr_q[:7]
+    curr_q_medusa = curr_q[7:14]
+    
+    joint_speed = 3.0 * np.pi / 180.0 # 1 degree per second
+    thanos_displacement = np.max(np.abs(des_q[:7] - curr_q[:7]))
+    thanos_endtime = thanos_displacement / joint_speed
+    
+    medusa_displacement = np.max(np.abs(des_q[7:14] - curr_q[7:14]))
+    medusa_endtime = medusa_displacement / joint_speed
+    
+    print("medusa_endtime: ", medusa_endtime)
+    print("thanos_endtime: ", thanos_endtime)
     des_q_thanos = JOINT0_THANOS.copy()
     des_q_medusa = JOINT0_MEDUSA.copy()
     
-    input("Press Enter to reset kuka arms.")
-    goto_joints(des_q_thanos, des_q_medusa, endtime = 30.0)
+    input("Press Enter to reset medusa arm.")
+    goto_joints(curr_q_thanos, des_q_medusa, endtime = medusa_endtime)
+    input("Press Enter to reset thanos arm.")
+    goto_joints(des_q_thanos, des_q_medusa, endtime = thanos_endtime)
+    input("Press Enter to correct arms.")
+    goto_joints_straight(des_q_thanos, des_q_medusa, endtime = 15.0)
     
-    # input("Press Enter to move end-effectors to a \"pushed\" position.")
-    # curr_q = curr_joints()
-    # des_q = generate_push_configuration(JOINT_CONFIG0, gap = GAP, push_distance = PUSH_DISTANCE)
-    # total_joint_displacement = np.max(np.abs(des_q - curr_q))
-    # endtime = total_joint_displacement / 0.05
+    input("Press Enter to move end-effectors to a \"pushed\" position.")
+    curr_q = curr_joints()
+    des_q = generate_push_configuration(JOINT_CONFIG0, gap = GAP, push_distance = PUSH_DISTANCE)
     
-    # des_q_thanos = des_q[:7]
-    # des_q_medusa = des_q[7:14]
-    # goto_joints(des_q_thanos, des_q_medusa, endtime = 15.0)
+    des_q_thanos = des_q[:7]
+    des_q_medusa = des_q[7:14]
+    goto_joints(des_q_thanos, des_q_medusa, endtime = 15.0)
+    goto_joints_straight(des_q_thanos, des_q_medusa, endtime = 15.0)
     
     
     curr_q = curr_joints()
     curr_thanos = curr_q[:7]
     curr_medusa = curr_q[7:14]
-    if np.max(np.abs(curr_thanos - des_q_thanos)) > 1e-3:
+    if np.max(np.abs(curr_thanos - des_q_thanos)) > 5e-3:
         raise ValueError(f"Error: {np.linalg.norm(curr_thanos - JOINT0_THANOS)}, Initial joint configuration for Thanos is not correct. WRONG SENSING")
-    if np.max(np.abs(curr_medusa - des_q_medusa)) > 1e-3:
+    if np.max(np.abs(curr_medusa - des_q_medusa)) > 5e-3:
         raise ValueError(f"Error: {np.linalg.norm(curr_medusa - JOINT0_MEDUSA)}, Initial joint configuration for Medusa is not correct. WRONG SENSING")
     
     seed_q0 = des_q

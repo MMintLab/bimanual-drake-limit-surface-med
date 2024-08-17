@@ -193,7 +193,7 @@ def run_full_inhand_og(desired_obj2left_se2: np.ndarray, desired_obj2right_se2: 
     
     # rotate left
     ts, left_poses, right_poses, obj_poses = inhand_rotate_poses(rotation, object_pose0, ts, left_poses, right_poses, obj_poses, steps=rotate_steps, rotate_time=rotate_time)
-    ts, left_poses, right_poses, obj_poses = pause_for(5.00, ts, left_poses, right_poses, obj_poses)
+    ts, left_poses, right_poses, obj_poses = pause_for(2.00, ts, left_poses, right_poses, obj_poses)
     
     # move left
     ts, left_poses, right_poses, obj_poses = inhand_se2_poses(desired_obj2left_se2, ts, left_poses, right_poses, obj_poses, left=False, se2_time=se2_time)
@@ -201,15 +201,15 @@ def run_full_inhand_og(desired_obj2left_se2: np.ndarray, desired_obj2right_se2: 
     
     #rotate back
     ts, left_poses, right_poses, obj_poses = inhand_rotate_poses(-rotation, object_pose0, ts, left_poses, right_poses, obj_poses, steps=rotate_steps, rotate_time=rotate_time)
-    ts, left_poses, right_poses, obj_poses = pause_for(3.0, ts, left_poses, right_poses, obj_poses)
+    ts, left_poses, right_poses, obj_poses = pause_for(2.0, ts, left_poses, right_poses, obj_poses)
     
     # move back (original object pose is the reference)
     ts, left_poses, right_poses, obj_poses = inhand_back_poses(ts, left_poses, right_poses, obj_poses, object_pose0, back_time=back_time)
-    ts, left_poses, right_poses, obj_poses = pause_for(4.0, ts, left_poses, right_poses, obj_poses)
+    ts, left_poses, right_poses, obj_poses = pause_for(2.0, ts, left_poses, right_poses, obj_poses)
     
     # rotate right
     ts, left_poses, right_poses, obj_poses = inhand_rotate_poses(-rotation, object_pose0, ts, left_poses, right_poses, obj_poses, steps=rotate_steps, rotate_time=rotate_time)
-    ts, left_poses, right_poses, obj_poses = pause_for(5.00, ts, left_poses, right_poses, obj_poses)
+    ts, left_poses, right_poses, obj_poses = pause_for(2.00, ts, left_poses, right_poses, obj_poses)
     
     # move right
     ts, left_poses, right_poses, obj_poses = inhand_se2_poses(desired_obj2right_se2, ts, left_poses, right_poses, obj_poses, left=True, se2_time=se2_time)
@@ -217,11 +217,11 @@ def run_full_inhand_og(desired_obj2left_se2: np.ndarray, desired_obj2right_se2: 
     
     #rotate back
     ts, left_poses, right_poses, obj_poses = inhand_rotate_poses(rotation, object_pose0, ts, left_poses, right_poses, obj_poses, steps=rotate_steps, rotate_time=rotate_time)
-    ts, left_poses, right_poses, obj_poses = pause_for(3.0, ts, left_poses, right_poses, obj_poses)
+    ts, left_poses, right_poses, obj_poses = pause_for(2.0, ts, left_poses, right_poses, obj_poses)
     
     # move back (original object pose is the reference)
     ts, left_poses, right_poses, obj_poses = inhand_back_poses(ts, left_poses, right_poses, obj_poses, object_pose0, back_time=back_time)
-    ts, left_poses, right_poses, obj_poses = pause_for(4.0, ts, left_poses, right_poses, obj_poses)
+    ts, left_poses, right_poses, obj_poses = pause_for(2.0, ts, left_poses, right_poses, obj_poses)
 
     if fix_right:    
         # fix the right pose to be rotated by pi/2 on y-axis

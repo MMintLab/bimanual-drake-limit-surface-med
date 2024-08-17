@@ -28,7 +28,7 @@ Demo:
           name: iiwa_medusa_origin
           X_PF:
               base_frame: world
-              rotation: !Rpy { deg: [1.0, 0.0, 0.0]}
+              rotation: !Rpy { deg: [0.0, 0.0, 0.0]}
               translation: [0, 1.2192, 0]
       - add_weld:
           parent: iiwa_medusa_origin
