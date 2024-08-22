@@ -3,7 +3,7 @@ from pydrake.systems.framework import DiagramBuilder
 from pydrake.multibody.plant import MultibodyPlantConfig, AddMultibodyPlant
 from pydrake.geometry import StartMeshcat
 from pydrake.all import MeshcatVisualizerParams, MeshcatVisualizer, MultibodyPlant
-from manipulation.meshcat_utils import _MeshcatPoseSliders
+from manipulation.meshcat_utils import MeshcatPoseSliders
 from manipulation.scenarios import AddMultibodyTriad
 from pydrake.math import RigidTransform, RotationMatrix, RollPitchYaw
 from collections import namedtuple
@@ -30,8 +30,8 @@ class InteractiveArm:
         thanos_plate = AddSingleFinger(plant, radius=0.19/2.0, length=length, name="thanos_plate", mass=1.0, mu=1.0, color=[1,0,0,1])
         medusa_plate = AddSingleFinger(plant, radius=0.19/2.0, length=length, name="medusa_plate", mass=1.0, mu=1.0, color=[1,0,0,1])
         
-        plant.WeldFrames(plant.GetFrameByName("thanos_finger"), plant.GetFrameByName("thanos_plate"), RigidTransform(np.array([0,0,0.2 - length/2 + 0.035])))
-        plant.WeldFrames(plant.GetFrameByName("medusa_finger"), plant.GetFrameByName("medusa_plate"), RigidTransform(np.array([0,0,0.2 - length/2 + 0.035])))
+        plant.WeldFrames(plant.GetFrameByName("thanos_finger"), plant.GetFrameByName("thanos_plate"), RigidTransform(np.array([0,0,0.13 - length/2 + 0.035])))
+        plant.WeldFrames(plant.GetFrameByName("medusa_finger"), plant.GetFrameByName("medusa_plate"), RigidTransform(np.array([0,0,0.13 - length/2 + 0.035])))
         plant.Finalize()
         
         visualizer = MeshcatVisualizer.AddToBuilder(
@@ -48,7 +48,10 @@ class InteractiveArm:
         context = diagram.CreateDefaultContext()
         plant_context = plant.GetMyContextFromRoot(context)
         
-        q0 = np.zeros(14)
+        q0 = [0.08232356364776336, 0.49329539590471605, 0.7554412443584381, -2.0426179181360524, 2.0754790345007996, 0.8874891667572512, -1.1673120760704268,
+                 -1.4536369838514789, 0.5612986824682098, 0.8971038307962235, -2.003297518161298, 0.8415437358419539, -1.392097329426083, 0.7279235421513163]
+        q0 = np.array(q0)
+        # q0 = np.zeros(14)
 
 
         plant.SetPositions(plant_context, q0)
@@ -56,10 +59,11 @@ class InteractiveArm:
         def callback(context, pose):
             q0 = plant.GetPositions(plant_context)
             
-            gap = 0.475
+            gap = 0.075 + 0.26
+            modif = -30.0 * np.pi / 180 * 0
             left_pose = RigidTransform(pose.rotation().ToQuaternion(), pose.translation() + pose.rotation().matrix() @ np.array([0,0,-gap/2]))
             right_rot = RotationMatrix(pose.rotation().matrix()) @ RotationMatrix.MakeYRotation(np.pi)
-            right_pose = RigidTransform(right_rot.ToQuaternion(), pose.translation() + right_rot.matrix() @ np.array([0,0,-gap/2]))
+            right_pose = RigidTransform( (right_rot @ RotationMatrix.MakeXRotation(modif)).ToQuaternion(), pose.translation() + right_rot.matrix() @ np.array([0,0,-gap/2]))
             sol, success = solveDualIK(plant, left_pose, right_pose, "medusa_finger", "thanos_finger", q0)
             
             # thanos q
@@ -83,7 +87,7 @@ class InteractiveArm:
         MinRange.__new__.__defaults__ = (0, 0, 0, 0.0, 0.0, 0.0)
         MaxRange = namedtuple("MaxRange", ("roll", "pitch", "yaw", "x", "y", "z"))
         MaxRange.__new__.__defaults__ = (np.pi, 0, 0, 1.0, 1.0, 2.0)
-        sliders = _MeshcatPoseSliders(meshcat,min_range=MinRange(), max_range=MaxRange())
+        sliders = MeshcatPoseSliders(meshcat,min_range=MinRange(), max_range=MaxRange())
 
         init_pose = RigidTransform(RollPitchYaw(np.pi/2, 0, 0), [0.32, 0.6096, 0.42])
         sliders.SetPose(init_pose)
