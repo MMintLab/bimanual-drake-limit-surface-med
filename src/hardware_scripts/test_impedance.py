@@ -2,32 +2,21 @@ from pydrake.all import (
     StartMeshcat,
     Simulator,
     DiagramBuilder,
-    TrajectorySource,
-    PiecewisePolynomial,
-    RollPitchYaw,
     ConstantVectorSource,
-    RotationMatrix,
-    Multiplexer,
     LeafSystem,
     JacobianWrtVariable,
     Demultiplexer
 )
-from pydrake.multibody.plant import MultibodyPlant, MultibodyPlantConfig, AddMultibodyPlant
+from pydrake.multibody.plant import MultibodyPlant
 from pydrake.systems.framework import DiagramBuilder
-from pydrake.math import RigidTransform
 
-from manipulation.scenarios import AddMultibodyTriad
-from pydrake.all import Quaternion
 import numpy as np
 
 import numpy as np
 
 import sys
 sys.path.append('..')
-from planning.ik_util import solve_ik_inhand, piecewise_joints, run_full_inhand_og, piecewise_traj, solveDualIK
 from diagrams import create_hardware_diagram_plant_bimanual, create_visual_diagram
-from load.sim_setup import load_iiwa_setup
-from data_record import BenchmarkController
 from run_plan_main import goto_joints, curr_joints
 
 class Wrench2Torque(LeafSystem):
