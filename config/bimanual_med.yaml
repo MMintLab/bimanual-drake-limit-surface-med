@@ -39,13 +39,13 @@ directives:
     - add_frame:
         name: thanos_finger
         X_PF:
-            base_frame: iiwa_thanos::iiwa_link_7
+            base_frame: iiwa_thanos::iiwa_link_ee_kuka
             rotation: !Rpy { deg: [0.0, 0.0, 0.0]}
-            translation: [0.0, 0.0, 0.0]
+            translation: [0.0, 0.0, 0.13]
 
     - add_frame:
         name: medusa_finger
         X_PF:
-            base_frame: iiwa_medusa::iiwa_link_7
+            base_frame: iiwa_medusa::iiwa_link_ee_kuka
             rotation: !Rpy {deg: [0.0, 0.0, 0.0]}
-            translation: [0.0, 0.0, 0.0]
+            translation: [0.0, 0.0, 0.13]

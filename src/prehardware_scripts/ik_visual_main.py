@@ -3,7 +3,7 @@ from pydrake.systems.framework import DiagramBuilder
 from pydrake.multibody.plant import MultibodyPlantConfig, AddMultibodyPlant
 from pydrake.geometry import StartMeshcat
 from pydrake.all import MeshcatVisualizerParams, MeshcatVisualizer, MultibodyPlant
-from manipulation.meshcat_utils import MeshcatPoseSliders
+from manipulation.meshcat_utils import _MeshcatPoseSliders
 from manipulation.scenarios import AddMultibodyTriad
 from pydrake.math import RigidTransform, RotationMatrix, RollPitchYaw
 from collections import namedtuple
@@ -30,8 +30,8 @@ class InteractiveArm:
         thanos_plate = AddSingleFinger(plant, radius=0.19/2.0, length=length, name="thanos_plate", mass=1.0, mu=1.0, color=[1,0,0,1])
         medusa_plate = AddSingleFinger(plant, radius=0.19/2.0, length=length, name="medusa_plate", mass=1.0, mu=1.0, color=[1,0,0,1])
         
-        plant.WeldFrames(plant.GetFrameByName("thanos_finger"), plant.GetFrameByName("thanos_plate"), RigidTransform(np.array([0,0,0.13 - length/2 + 0.035])))
-        plant.WeldFrames(plant.GetFrameByName("medusa_finger"), plant.GetFrameByName("medusa_plate"), RigidTransform(np.array([0,0,0.13 - length/2 + 0.035])))
+        plant.WeldFrames(plant.GetFrameByName("thanos_finger"), plant.GetFrameByName("thanos_plate"), RigidTransform(np.array([0,0,-length/2])))
+        plant.WeldFrames(plant.GetFrameByName("medusa_finger"), plant.GetFrameByName("medusa_plate"), RigidTransform(np.array([0,0,-length/2])))
         plant.Finalize()
         
         visualizer = MeshcatVisualizer.AddToBuilder(
@@ -40,9 +40,12 @@ class InteractiveArm:
             meshcat,
             MeshcatVisualizerParams(delete_prefix_initialization_event=False),
         )
+
+        AddMultibodyTriad(plant.GetFrameByName("iiwa_link_7", plant.GetModelInstanceByName("iiwa_thanos")), scene_graph, length=0.1, radius=0.003)
+        AddMultibodyTriad(plant.GetFrameByName("iiwa_link_7", plant.GetModelInstanceByName("iiwa_medusa")), scene_graph, length=0.1, radius=0.003)
         
-        AddMultibodyTriad(plant.GetFrameByName("iiwa_link_ee_kuka", plant.GetModelInstanceByName("iiwa_thanos")), scene_graph, length=0.1, radius=0.003)
-        AddMultibodyTriad(plant.GetFrameByName("iiwa_link_ee_kuka", plant.GetModelInstanceByName("iiwa_medusa")), scene_graph, length=0.1, radius=0.003)
+        AddMultibodyTriad(plant.GetFrameByName("thanos_finger"), scene_graph, length=0.05, radius=0.003)
+        AddMultibodyTriad(plant.GetFrameByName("medusa_finger"), scene_graph, length=0.05, radius=0.003)
         
         diagram = builder.Build()
         context = diagram.CreateDefaultContext()
@@ -59,7 +62,7 @@ class InteractiveArm:
         def callback(context, pose):
             q0 = plant.GetPositions(plant_context)
             
-            gap = 0.075 + 0.26 - 0.008
+            gap = 0.075
             modif = -30.0 * np.pi / 180 * 0
             left_pose = RigidTransform(pose.rotation().ToQuaternion(), pose.translation() + pose.rotation().matrix() @ np.array([0,0,-gap/2]))
             right_rot = RotationMatrix(pose.rotation().matrix()) @ RotationMatrix.MakeYRotation(np.pi)
@@ -87,7 +90,7 @@ class InteractiveArm:
         MinRange.__new__.__defaults__ = (0, 0, 0, 0.0, 0.0, 0.0)
         MaxRange = namedtuple("MaxRange", ("roll", "pitch", "yaw", "x", "y", "z"))
         MaxRange.__new__.__defaults__ = (np.pi, 0, 0, 1.0, 1.0, 2.0)
-        sliders = MeshcatPoseSliders(meshcat,min_range=MinRange(), max_range=MaxRange())
+        sliders = _MeshcatPoseSliders(meshcat,min_range=MinRange(), max_range=MaxRange())
 
         init_pose = RigidTransform(RollPitchYaw(np.pi/2, 0, 0), [0.32, 0.6096, 0.42])
         sliders.SetPose(init_pose)
