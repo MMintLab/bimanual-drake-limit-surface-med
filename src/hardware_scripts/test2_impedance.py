@@ -1,32 +1,9 @@
-from pydrake.all import (
-    StartMeshcat,
-    Simulator,
-    DiagramBuilder,
-    TrajectorySource,
-    PiecewisePolynomial,
-    RollPitchYaw,
-    ConstantVectorSource,
-    RotationMatrix,
-    Multiplexer
-)
-from pydrake.multibody.plant import MultibodyPlant, MultibodyPlantConfig, AddMultibodyPlant
-from pydrake.systems.framework import DiagramBuilder
-from pydrake.math import RigidTransform
-
-from manipulation.scenarios import AddMultibodyTriad
-from pydrake.all import Quaternion
-import numpy as np
-
 import numpy as np
 
 import sys
 sys.path.append('..')
-from planning.ik_util import solve_ik_inhand, piecewise_joints, run_full_inhand_og, piecewise_traj, solveDualIK
-from diagrams import create_hardware_diagram_plant_bimanual, create_visual_diagram
-from load.sim_setup import load_iiwa_setup
-from data_record import BenchmarkController
 from run_plan_main import goto_joints, curr_joints
-from test_impedance import Wrench2Torque, goto_and_torque
+from test_impedance import goto_and_torque
 
 JOINT_CONFIG0 = [0.2629627380321955, 0.6651758641535246, 0.7157398241465858, -1.9204422808541055, 2.1896118717866164, 0.8246912707270445, -1.3312565995665175, -1.4523627309516682, 0.7165811053720673, 0.805679937637571, -1.876561512010483, 0.6976893656839942, -1.3458728960727322, 0.7420561347553449]
 JOINT0_THANOS = np.array([JOINT_CONFIG0[:7]]).flatten()

@@ -135,7 +135,7 @@ def goto_joints_straight(joint_thanos, joint_medusa, endtime = 30.0):
     simulator.set_target_realtime_rate(1.0)
     simulator.AdvanceTo(endtime + 2.0)
 
-def generate_trajectory(seed_q0):
+def generate_trajectory(seed_q0, rotation=np.pi/3):
     plant_arms = MultibodyPlant(1e-3) # time step
     load_iiwa_setup(plant_arms, package_file='../../package.xml', directive_path="../../config/bimanual_med.yaml")
     plant_arms.Finalize()
@@ -153,7 +153,7 @@ def generate_trajectory(seed_q0):
     desired_obj2left_se2 = np.array([0.00, 0.0, 0.0])
     desired_obj2right_se2 = np.array([0.00, 0.0, np.pi])
 
-    ts, left_poses, right_poses, obj_poses = run_full_inhand_og(desired_obj2left_se2, desired_obj2right_se2, left_pose0, right_pose0, object_pose0, rotation=np.pi/3, rotate_steps=1000, rotate_time=30.0, se2_time=20.0, back_time=5.0, fix_right=False)
+    ts, left_poses, right_poses, obj_poses = run_full_inhand_og(desired_obj2left_se2, desired_obj2right_se2, left_pose0, right_pose0, object_pose0, rotation=rotation, rotate_steps=1000, rotate_time=30.0, se2_time=20.0, back_time=5.0, fix_right=False)
     left_piecewise, right_piecewise, _ = piecewise_traj(ts, left_poses, right_poses, obj_poses)
     
     T = ts[-1]    

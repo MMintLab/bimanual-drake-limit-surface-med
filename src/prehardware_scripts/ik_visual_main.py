@@ -51,10 +51,7 @@ class InteractiveArm:
         context = diagram.CreateDefaultContext()
         plant_context = plant.GetMyContextFromRoot(context)
         
-        q0 = [0.08232356364776336, 0.49329539590471605, 0.7554412443584381, -2.0426179181360524, 2.0754790345007996, 0.8874891667572512, -1.1673120760704268,
-                 -1.4536369838514789, 0.5612986824682098, 0.8971038307962235, -2.003297518161298, 0.8415437358419539, -1.392097329426083, 0.7279235421513163]
-        q0 = np.array(q0)
-        # q0 = np.zeros(14)
+        q0 = np.zeros(14)
 
 
         plant.SetPositions(plant_context, q0)

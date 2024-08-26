@@ -29,9 +29,6 @@ class ApplyForce(LeafSystem):
     def DoCalcOutput(self, context, output):
         q_thanos = self.GetInputPort("thanos_position").Eval(context)
         q_medusa = self.GetInputPort("medusa_position").Eval(context)
-        
-        
-        object_state = self.get_input_port(2).Eval(context)
         self._plant.SetPositions(self._plant_context, self._iiwa_thanos, q_thanos)
         self._plant.SetPositions(self._plant_context, self._iiwa_medusa, q_medusa)
         
@@ -41,12 +38,17 @@ class ApplyForce(LeafSystem):
         
         adder_left_force = np.array([0,0,0])
         adder_right_force = np.array([0,0,0])
+
         if z_dir_thanos_finger >= 1e-3: # object weight on thanos finger 
+            print("Object weight on thanos finger")
             rot_thanos_finger = self._plant.GetFrameByName("thanos_finger").CalcPoseInWorld(self._plant_context).rotation().matrix()
             adder_left_force = np.abs(rot_thanos_finger.T @ self.grav_force)[2] # now this is in thanos finger frame
         elif z_dir_thanos_finger < -1e-3: # object pushing on medusa finger
+            print("Object pushing on medusa finger")
             rot_medusa_finger = self._plant.GetFrameByName("medusa_finger").CalcPoseInWorld(self._plant_context).rotation().matrix()
             adder_right_force = np.abs(rot_medusa_finger.T @ self.grav_force)[2] # now this is in medusa finger frame
+        else:
+            print("Object weight on none")
         
         thanos_pose_rot = self._plant.GetFrameByName("iiwa_link_7", self._iiwa_thanos).CalcPoseInWorld(self._plant_context).rotation().matrix()
         medusa_pose_rot = self._plant.GetFrameByName("iiwa_link_7", self._iiwa_medusa).CalcPoseInWorld(self._plant_context).rotation().matrix()
