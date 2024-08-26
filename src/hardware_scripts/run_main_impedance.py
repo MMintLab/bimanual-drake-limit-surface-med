@@ -72,7 +72,7 @@ def follow_trajectory_and_torque(traj_thanos, traj_medusa, force = 30.0, endtime
     hardware_block = root_builder.AddSystem(hardware_diagram)
     recorder = BenchmarkController(hardware_plant)
     recorder_block = root_builder.AddSystem(recorder)
-    apply_torque_block = root_builder.AddSystem(ApplyForce(hardware_plant, object_kg = 2.0, force=force))
+    apply_torque_block = root_builder.AddSystem(ApplyForce(hardware_plant, object_kg = 1.0, force=force))
     torque_demultiplexer_block = root_builder.AddSystem(Demultiplexer(14, 7))
     
     traj_medusa_block = root_builder.AddSystem(TrajectorySource(traj_medusa))
@@ -139,7 +139,7 @@ if __name__ == '__main__':
     goto_and_torque(des_q[:7], des_q[7:], wrench_thanos, wrench_medusa, endtime = 5.0)
     
     
-    traj_medusa, traj_thanos, T = generate_trajectory(des_q, rotation=np.pi/3, desired_obj2left_se2 = np.array([0.00, -0.03, 0.0]), desired_obj2right_se2 = np.array([0.00, 0.03, np.pi]))
+    traj_medusa, traj_thanos, T = generate_trajectory(des_q, rotation=np.pi/2, desired_obj2left_se2 = np.array([0.00, -0.03, 0.0]), desired_obj2right_se2 = np.array([0.00, 0.03, np.pi]))
     input("Press Enter to follow trajectory")
     recorder = follow_trajectory_and_torque(traj_thanos, traj_medusa, force = force,endtime = T)
     
