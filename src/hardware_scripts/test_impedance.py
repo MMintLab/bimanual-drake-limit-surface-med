@@ -57,14 +57,10 @@ class Wrench2Torque(LeafSystem):
         
         thanos_torque = J_thanos.T @ wrench_thanos
         medusa_torque = J_medusa.T @ wrench_medusa
-        print("Thanos Torque:", thanos_torque)
-        print("Medusa Torque:", medusa_torque)
         output.SetFromVector(np.concatenate([thanos_torque, medusa_torque]))
 
-def goto_and_torque(joint_thanos, joint_medusa, wrench_thanos, wrench_medusa, endtime = 30.0):
+def goto_and_torque(joint_thanos, joint_medusa, wrench_thanos, wrench_medusa, endtime = 30.0, scenario_file = "../../config/bimanual_med_hardware_impedance.yaml", directives_file = "../../config/bimanual_med.yaml"):
     meshcat = StartMeshcat()
-    scenario_file = "../../config/bimanual_med_hardware_impedance.yaml"
-    directives_file = "../../config/bimanual_med.yaml"
     
     root_builder = DiagramBuilder()
     hardware_diagram, hardware_plant = create_hardware_diagram_plant_bimanual(scenario_filepath=scenario_file, position_only=False, meshcat = meshcat)

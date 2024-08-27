@@ -23,7 +23,7 @@ class InteractiveArm:
         builder = DiagramBuilder()
         plant, scene_graph = AddMultibodyPlant(config, builder)
         plant: MultibodyPlant = plant
-        load_iiwa_setup(plant, scene_graph, package_file='../../package.xml', directive_path="../../config/bimanual_med.yaml")
+        load_iiwa_setup(plant, scene_graph, package_file='../../package.xml', directive_path="../../config/bimanual_med_gamma.yaml")
         #no grav
         plant.mutable_gravity_field().set_gravity_vector([0, 0, 0])
         length = 0.01
@@ -59,7 +59,7 @@ class InteractiveArm:
         def callback(context, pose):
             q0 = plant.GetPositions(plant_context)
             
-            gap = 0.005
+            gap = 0.02
             modif = -30.0 * np.pi / 180 * 0
             left_pose = RigidTransform(pose.rotation().ToQuaternion(), pose.translation() + pose.rotation().matrix() @ np.array([0,0,-gap/2]))
             right_rot = RotationMatrix(pose.rotation().matrix()) @ RotationMatrix.MakeYRotation(np.pi)
@@ -89,7 +89,7 @@ class InteractiveArm:
         MaxRange.__new__.__defaults__ = (np.pi, 0, 0, 1.0, 1.0, 2.0)
         sliders = MeshcatPoseSliders(meshcat,min_range=MinRange(), max_range=MaxRange())
 
-        init_pose = RigidTransform(RollPitchYaw(np.pi/2, 0, 0), [0.32, 0.6096, 0.42])
+        init_pose = RigidTransform(RollPitchYaw(np.pi/6, 0, 0), [0.32, 0.6096, 0.45])
         sliders.SetPose(init_pose)
         sliders.Run(visualizer, context, callback)
         

@@ -68,10 +68,8 @@ def correct_medusa():
     goto_joints(new_q_thanos, new_q_medusa, endtime = 15.0)
     
 
-def goto_joints(joint_thanos, joint_medusa, endtime = 30.0):
+def goto_joints(joint_thanos, joint_medusa, endtime = 30.0, scenario_file = "../../config/bimanual_med_hardware.yaml", directives_file = "../../config/bimanual_med.yaml"):
     meshcat = StartMeshcat()
-    scenario_file = "../../config/bimanual_med_hardware.yaml"
-    directives_file = "../../config/bimanual_med.yaml"
     
     root_builder = DiagramBuilder()
     

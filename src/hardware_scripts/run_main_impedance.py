@@ -109,6 +109,9 @@ def follow_trajectory_and_torque(traj_thanos, traj_medusa, force = 30.0, endtime
     return recorder
 
 if __name__ == '__main__':
+    scenario_file = "../../config/bimanual_med_hardware_impedance.yaml"
+    directives_file = "../../config/bimanual_med.yaml"
+    
     curr_q = curr_joints()
     des_q = JOINT_CONFIG0
     
@@ -128,9 +131,9 @@ if __name__ == '__main__':
     des_q_medusa = JOINT0_MEDUSA.copy()
     
     input("Press Enter to reset medusa arm.")
-    goto_joints(curr_q_thanos, des_q_medusa, endtime = medusa_endtime)
+    goto_joints(curr_q_thanos, des_q_medusa, endtime = medusa_endtime, scenario_file=scenario_file, directives_file=directives_file)
     input("Press Enter to reset thanos arm.")
-    goto_joints(des_q_thanos, des_q_medusa, endtime = thanos_endtime)
+    goto_joints(des_q_thanos, des_q_medusa, endtime = thanos_endtime, scenario_file=scenario_file, directives_file=directives_file)
     
     input("Press Enter to press fingers together")
     force = 30.0

@@ -6,6 +6,8 @@ from pydrake.solvers import SnoptSolver
 from pydrake.all import PiecewisePose, PiecewiseTrajectory, Quaternion, PiecewisePolynomial, JacobianWrtVariable
 from typing import List
 
+
+
 def solveDualIK(plant: MultibodyPlant, left_pose: RigidTransform, right_pose: RigidTransform, left_frame_name: str, right_frame_name: str, q0=1e-10*np.ones(14)):
     ik = InverseKinematics(plant, with_joint_limits=True)
     ik.AddPositionConstraint(
@@ -308,3 +310,22 @@ def inhand_test(desired_obj2left_se2: np.ndarray, left_pose0: RigidTransform, ri
     ts, left_poses, right_poses, obj_poses = pause_for(2.0, ts, left_poses, right_poses, obj_poses)
     
     return ts, left_poses, right_poses, obj_poses
+
+def generate_push_configuration(plant_arms: MultibodyPlant, q0, gap = 0.475):
+    
+    plant_context = plant_arms.CreateDefaultContext()
+    plant_arms.SetPositions(plant_context, plant_arms.GetModelInstanceByName("iiwa_thanos"), q0[:7])
+    plant_arms.SetPositions(plant_context, plant_arms.GetModelInstanceByName("iiwa_medusa"), q0[7:14])
+    
+    thanos_pose = plant_arms.GetFrameByName("thanos_finger").CalcPoseInWorld(plant_context)
+    medusa_pose = plant_arms.GetFrameByName("medusa_finger").CalcPoseInWorld(plant_context)
+    
+    midpoint_pose = RigidTransform(thanos_pose.rotation().ToQuaternion(), (thanos_pose.translation() + medusa_pose.translation())/2)
+    new_thanos_pose = RigidTransform(thanos_pose.rotation().ToQuaternion(), midpoint_pose.translation() + midpoint_pose.rotation().matrix() @ np.array([0, 0, -gap/2.0]))
+    
+    new_medusa_rotation = thanos_pose.rotation() @ RollPitchYaw(0.0, np.pi, 0.0).ToRotationMatrix()
+    new_medusa_pose = RigidTransform(new_medusa_rotation, midpoint_pose.translation() + midpoint_pose.rotation().matrix() @ np.array([0,0, gap/2.0]))
+
+    new_joints,_ = solveDualIK(plant_arms, new_thanos_pose, new_medusa_pose, "thanos_finger", "medusa_finger", q0=q0)
+    
+    return new_joints
