@@ -1,18 +1,37 @@
 <launch>
+    <arg name="launch_prefix" default="" /> <!-- set to value="gdbserver localhost:10000" for remote debugging -->    
+    <arg name="node_namespace" default="apriltag_ros_continuous_node" />
+    <arg name="detection_id" default="" />
+    <arg name="publish_tf" default="false"/>
+    <arg name="params_package_name" default="apriltag_ros"/>
 
-    <!-- Camera launch parameters. -->
-    <arg name="fps" default="15"/>
-    <arg name="enable_pointcloud" default="true"/>
-    <arg name="align_depth" default="false"/>
-    <arg name="cameras_config" default="cameras.yaml"/>
-    <arg name="resolution" default="640x480"/>
-
-    <param name="~rate" value="$(arg fps)" type="int"/>
-    <param name="~enable_pointcloud" value="$(arg enable_pointcloud)" type="bool"/>
-    <param name="~align_depth" value="$(arg align_depth)" type="bool"/>
-
-    <node pkg="mmint_camera_utils" type="launch_cameras.py" name="launch_camera_node" output="screen" args="--resolution $(arg resolution)">
-        <rosparam command="load" file="$(find bimanual)/config/$(arg cameras_config)"/>
+    <!-- These nodes republish pi images to be raw -->
+    <node name="republish_right" pkg="image_transport" type="republish" output="screen" args="compressed raw">
+        <remap from="in" to="/panda_1_gelslim_right/image"/>
+        <remap from="out" to="/panda_1_gelslim_right/image_raw"/>
     </node>
 
+    <node name="republish_left" pkg="image_transport" type="republish" output="screen" args="compressed raw">
+        <remap from="in" to="/panda_1_gelslim_left/image"/>
+        <remap from="out" to="/panda_1_gelslim_left/image_raw"/>
+    </node>
+
+    <node name="undistort_cameras" pkg="bimanual" type="undistort_camera.py" output="screen"/>
+
+    <rosparam command="load" file="$(eval find(arg('params_package_name')) + '/config/settings.yaml')" ns="$(arg node_namespace)" />
+    <rosparam command="load" file="$(eval find(arg('params_package_name')) + '/config/tags.yaml')" ns="$(arg node_namespace)" />
+
+
+    <include file="$(eval find(arg('params_package_name')) + '/launch/continuous_detection.launch')">
+        <arg name="node_namespace" value="apriltag_left"/>
+        <arg name="camera_name" value="/panda_1_gelslim_left"/>
+        <arg name="camera_frame" value="gelslim_left"/>
+        <arg name="image_topic" value="image_undistorted"/>
+    </include>
+    <include file="$(eval find(arg('params_package_name')) + '/launch/continuous_detection.launch')">
+        <arg name="node_namespace" value="apriltag_right"/>
+        <arg name="camera_name" value="/panda_1_gelslim_right"/>
+        <arg name="camera_frame" value="gelslim_right"/>
+        <arg name="image_topic" value="image_undistorted"/>
+    </include>
 </launch>
