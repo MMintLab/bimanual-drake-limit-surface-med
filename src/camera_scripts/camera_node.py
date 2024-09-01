@@ -4,6 +4,7 @@ import cv2
 import numpy as np
 from sensor_msgs.msg import Image, CameraInfo
 from cv_bridge import CvBridge, CvBridgeError
+from apriltag_ros.msg import AprilTagDetectionArray, AprilTagDetection
 
 class CameraParameters:
     def __init__(self, K, D, R, P, size, alpha = 0.0):
@@ -29,8 +30,8 @@ class CameraManager:
         self.gelslim_left_info : CameraParameters = self.camerainfo2parameters(rospy.wait_for_message("/panda_1_gelslim_left/camera_info", CameraInfo))
         self.gelslim_right_info : CameraParameters = self.camerainfo2parameters(rospy.wait_for_message("/panda_1_gelslim_right/camera_info", CameraInfo))
         
-        self.gelslim_left_sub  = rospy.Subscriber("/panda_1_gelslim_left/image_raw", Image, self.gelslim_left_callback, queue_size=1)
-        self.gelslim_right_sub = rospy.Subscriber("/panda_1_gelslim_right/image_raw", Image, self.gelslim_right_callback, queue_size=1)
+        self.gelslim_left_sub  = rospy.Subscriber("/panda_1_gelslim_left/image_raw", Image, self.gelslim_left_callback)
+        self.gelslim_right_sub = rospy.Subscriber("/panda_1_gelslim_right/image_raw", Image, self.gelslim_right_callback)
         
         self.gelslim_left_pub = rospy.Publisher("/panda_1_gelslim_left/image_undistorted", Image, queue_size=1)
         self.gelslim_right_pub = rospy.Publisher("/panda_1_gelslim_right/image_undistorted", Image, queue_size=1)
@@ -55,6 +56,14 @@ class CameraManager:
         undistorted.header.stamp = data.header.stamp
         self.gelslim_right_pub.publish(undistorted)
     
+class DetectionManager:
+    def __init__(self):
+        self.medusa_cam_sub = rospy.Subscriber("/panda_1_gelslim_left/image_undistorted", Image, self.medusa_callback)
+        self.thanos_cam_sub = rospy.Subscriber("/panda_1_gelslim_right/image_undistorted", Image, self.thanos_callback)
+        
+        self.medusa_tag_sub = rospy.Subscriber("/panda_1_gelslim_left/tag_detections", AprilTagDetectionArray, self.medusa_tag_callback)
+        self.thanos_cam_sub = rospy.Subscriber("/panda_1_gelslim_right/tag_detections", AprilTagDetectionArray, self.thanos_tag_callback)
+        pass
 
 # This file is for republishing undistorted images
 if __name__ == '__main__':

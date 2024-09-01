@@ -16,10 +16,13 @@
         <remap from="out" to="/panda_1_gelslim_left/image_raw"/>
     </node>
 
+    <!-- This node undistorts the images from the cameras -->
     <node name="undistort_cameras" pkg="bimanual" type="undistort_camera.py" output="screen"/>
 
+
+    <!-- This node detects apriltags in the images -->
     <rosparam command="load" file="$(eval find(arg('params_package_name')) + '/config/settings.yaml')" ns="$(arg node_namespace)" />
-    <rosparam command="load" file="$(eval find(arg('params_package_name')) + '/config/tags.yaml')" ns="$(arg node_namespace)" />
+    <rosparam command="load" file="$(eval find('bimanual') + '/config/tags.yaml')" ns="$(arg node_namespace)" />
 
 
     <include file="$(eval find(arg('params_package_name')) + '/launch/continuous_detection.launch')">
