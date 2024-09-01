@@ -131,6 +131,6 @@ if __name__ == '__main__':
     
     
     #make medusa go in se(2) motion
-    traj_thanos, traj_medusa, T = generate_se2_motion(des_q, desired_obj2left_se2 = np.array([0.0, -0.04, 0.0]), desired_obj2right_se2 = np.array([0.0, 0.0, np.pi - 90 * np.pi / 180]), gap = gap)
+    traj_thanos, traj_medusa, T = generate_se2_motion(des_q, desired_obj2left_se2 = np.array([0.0, -0.04, 0.0]), gap = gap)
     input("Press Enter to start se2 motion")
     follow_trajectory_and_torque(traj_thanos, traj_medusa, force = force, endtime = T)

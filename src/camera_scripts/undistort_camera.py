@@ -5,6 +5,13 @@ import numpy as np
 from sensor_msgs.msg import Image, CameraInfo
 from cv_bridge import CvBridge, CvBridgeError
 
+def camerainfo2parameters(data: CameraInfo):
+    intrinsics = data.K
+    distortion = data.D
+    rotation = np.array(data.R).reshape((3,3))
+    projection = np.array(list(data.P)).reshape((3,4))
+    size = (data.width, data.height)
+    return CameraParameters(intrinsics, distortion, rotation, projection, size)
 class CameraParameters:
     def __init__(self, K, D, R, P, size, alpha = 0.0):
         self.intrinsics = np.array(K).reshape((3,3)) # 3x3 intrinsics matrix
@@ -26,8 +33,8 @@ class CameraParameters:
 class CameraManager:
     def __init__(self):
         self.bridge = CvBridge()
-        self.gelslim_left_info : CameraParameters = self.camerainfo2parameters(rospy.wait_for_message("/panda_1_gelslim_left/camera_info", CameraInfo))
-        self.gelslim_right_info : CameraParameters = self.camerainfo2parameters(rospy.wait_for_message("/panda_1_gelslim_right/camera_info", CameraInfo))
+        self.gelslim_left_info : CameraParameters = camerainfo2parameters(rospy.wait_for_message("/panda_1_gelslim_left/camera_info", CameraInfo))
+        self.gelslim_right_info : CameraParameters = camerainfo2parameters(rospy.wait_for_message("/panda_1_gelslim_right/camera_info", CameraInfo))
         
         self.gelslim_left_sub  = rospy.Subscriber("/panda_1_gelslim_left/image_raw", Image, self.gelslim_left_callback, queue_size=1)
         self.gelslim_right_sub = rospy.Subscriber("/panda_1_gelslim_right/image_raw", Image, self.gelslim_right_callback, queue_size=1)
@@ -35,13 +42,7 @@ class CameraManager:
         self.gelslim_left_pub = rospy.Publisher("/panda_1_gelslim_left/image_undistorted", Image, queue_size=1)
         self.gelslim_right_pub = rospy.Publisher("/panda_1_gelslim_right/image_undistorted", Image, queue_size=1)
         
-    def camerainfo2parameters(self, data: CameraInfo):
-        intrinsics = data.K
-        distortion = data.D
-        rotation = np.array(data.R).reshape((3,3))
-        projection = np.array(list(data.P)).reshape((3,4))
-        size = (data.width, data.height)
-        return CameraParameters(intrinsics, distortion, rotation, projection, size)
+
 
     def gelslim_left_callback(self, data: Image):
         #undistort image
