@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 import rospy
 import cv2
 from sensor_msgs.msg import Image, CameraInfo
@@ -16,6 +17,8 @@ class TagVisualization:
         self.bridge = CvBridge()
         self.medusa_cam_sub = rospy.Subscriber("/panda_1_gelslim_left/tag_detections_image", Image, self.medusa_callback, queue_size=1)
         self.thanos_cam_sub = rospy.Subscriber("/panda_1_gelslim_right/tag_detections_image", Image, self.thanos_callback, queue_size=1)
+        self.medusa_cam_pub = rospy.Publisher("/panda_1_gelslim_left/pose_image", Image, queue_size=1)
+        self.thanos_cam_pub = rospy.Publisher("/panda_1_gelslim_right/pose_image", Image, queue_size=1)
         
         self.medusa_tag_sub = rospy.Subscriber("/panda_1_gelslim_left/tag_detections", AprilTagDetectionArray, self.medusa_tag_callback, queue_size=1)
         self.thanos_tag_sub = rospy.Subscriber("/panda_1_gelslim_right/tag_detections", AprilTagDetectionArray, self.thanos_tag_callback, queue_size=1)
@@ -32,15 +35,14 @@ class TagVisualization:
         self.lock = threading.Lock()
     def medusa_callback(self, data: Image):
         cv_image = self.image_callback_fn(data, self.medusa_se2, self.medusa_info_intrinsics, rotation=self.medusa_rotation)
-        with self.lock:
-            cv2.imshow("Medusa", cv_image)
-            cv2.waitKey(1)
+        self.medusa_cam_pub.publish(self.bridge.cv2_to_imgmsg(cv_image, "bgr8"))
+        
     def medusa_tag_callback(self, data: AprilTagDetectionArray):
         se2z = self.tag_callback_fn(data)
         
         if se2z is not None:
             self.medusa_se2 = se2z
-            x,y,_,yaw = self.medusa_se2
+            
         if self.medusa_se2 is not None:
             x,y,z,yaw = self.medusa_se2
             rot = np.array([[np.cos(self.medusa_rotation), -np.sin(self.medusa_rotation)], [np.sin(self.medusa_rotation), np.cos(self.medusa_rotation)]])
@@ -50,13 +52,12 @@ class TagVisualization:
         
     def thanos_callback(self, data: Image):
         cv_image = self.image_callback_fn(data, self.thanos_se2, self.thanos_info_intrinsics, rotation = self.thanos_rotation)
-        with self.lock:
-            cv2.imshow("Thanos", cv_image)
+        self.thanos_cam_pub.publish(self.bridge.cv2_to_imgmsg(cv_image, "bgr8"))
+        
     def thanos_tag_callback(self, data: AprilTagDetectionArray):
         se2z = self.tag_callback_fn(data)
         if se2z is not None:
             self.thanos_se2 = se2z
-            x,y,_,yaw = self.thanos_se2
         if self.thanos_se2 is not None:
             x,y,z,yaw = self.thanos_se2
             rot = np.array([[np.cos(self.thanos_rotation), -np.sin(self.thanos_rotation)], [np.sin(self.thanos_rotation), np.cos(self.thanos_rotation)]])
@@ -109,10 +110,6 @@ class TagVisualization:
         return None
             
 if __name__ == '__main__':
-    rospy.init_node('tag_visualization')
+    rospy.init_node('camera_node')
     tv = TagVisualization()
-    # while not rospy.is_shutdown():
-    #     if tv.thanos_obj_se2 is not None:
-    #         x,y,yaw = tv.thanos_obj_se2
-    #         print(f"Thanos: x={x:.4f}, y={y:.4f}")
     rospy.spin()

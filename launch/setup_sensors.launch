@@ -37,4 +37,16 @@
         <arg name="camera_frame" value="gelslim_right"/>
         <arg name="image_topic" value="image_undistorted"/>
     </include>
+
+    <include file="$(eval find('netft_rdt_driver') + '/launch/netft.launch')">
+        <arg name="ip" value="192.168.1.31"/>
+        <arg name="sensor_name" value="netft_thanos"/>
+    </include>
+    <include file="$(eval find('netft_rdt_driver') + '/launch/netft.launch')">
+        <arg name="ip" value="192.168.1.33"/>
+        <arg name="sensor_name" value="netft_medusa"/>
+    </include>
+
+    <node name="object_tracker" pkg="bimanual" type="color_camera_node.py" output="screen"/>
+
 </launch>
