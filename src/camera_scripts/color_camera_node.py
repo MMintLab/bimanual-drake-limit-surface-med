@@ -12,11 +12,11 @@ class TagVisualization:
         self.medusa_info_intrinsics = camerainfo2parameters(rospy.wait_for_message("/panda_1_gelslim_left/camera_info", CameraInfo)).intrinsics
         self.thanos_info_intrinsics = camerainfo2parameters(rospy.wait_for_message("/panda_1_gelslim_right/camera_info", CameraInfo)).intrinsics
         
-        self.medusa_cam_sub = rospy.Subscriber("/panda_1_gelslim_left/tag_detections_image", Image, self.medusa_callback)
-        self.thanos_cam_sub = rospy.Subscriber("/panda_1_gelslim_right/tag_detections_image", Image, self.thanos_callback)
+        self.medusa_cam_sub = rospy.Subscriber("/panda_1_gelslim_left/tag_detections_image", Image, self.medusa_callback, queue_size=1)
+        self.thanos_cam_sub = rospy.Subscriber("/panda_1_gelslim_right/tag_detections_image", Image, self.thanos_callback, queue_size=1)
         
-        self.medusa_tag_sub = rospy.Subscriber("/panda_1_gelslim_left/tag_detections", AprilTagDetectionArray, self.medusa_tag_callback)
-        self.thanos_cam_sub = rospy.Subscriber("/panda_1_gelslim_right/tag_detections", AprilTagDetectionArray, self.thanos_tag_callback)
+        self.medusa_tag_sub = rospy.Subscriber("/panda_1_gelslim_left/tag_detections", AprilTagDetectionArray, self.medusa_tag_callback, queue_size=1)
+        self.thanos_cam_sub = rospy.Subscriber("/panda_1_gelslim_right/tag_detections", AprilTagDetectionArray, self.thanos_tag_callback, queue_size=1)
         self.bridge = CvBridge()
         
         self.medusa_se2 = None
@@ -33,15 +33,17 @@ class TagVisualization:
             cv2.waitKey(1)
     def medusa_tag_callback(self, data: AprilTagDetectionArray):
         se2z = self.tag_callback_fn(data)
-        self.medusa_se2 = se2z if se2z is not None else self.medusa_se2
-        x,y,_,yaw = self.medusa_se2
         
-        rotation = -np.pi/4
-        rotated_x = np.array([np.cos(rotation), -np.sin(rotation)]) @ np.array([x,y])
-        rotated_y = np.array([np.sin(rotation), np.cos(rotation)]) @ np.array([x,y])
-        yaw = yaw + rotation
-        
-        self.medusa_obj_se2 = (rotated_x, rotated_y, yaw)
+        if se2z is not None:
+            self.medusa_se2 = se2z
+            x,y,_,yaw = self.medusa_se2
+            
+            rotation = -np.pi/4
+            rotated_x = np.array([np.cos(rotation), -np.sin(rotation)]) @ np.array([x,y])
+            rotated_y = np.array([np.sin(rotation), np.cos(rotation)]) @ np.array([x,y])
+            yaw = yaw + rotation
+            
+            self.medusa_obj_se2 = (rotated_x, rotated_y, yaw)
         
     def thanos_callback(self, data: Image):
         cv_image = self.image_callback_fn(data, self.thanos_se2, self.thanos_info_intrinsics)
@@ -49,22 +51,23 @@ class TagVisualization:
             cv2.imshow("Thanos", cv_image)
     def thanos_tag_callback(self, data: AprilTagDetectionArray):
         se2z = self.tag_callback_fn(data)
-        self.thanos_se2 = se2z if se2z is not None else self.thanos_se2
-        x,y,_,yaw = self.thanos_se2
-        
-        rotation = -np.pi/4
-        rotated_x = np.array([np.cos(rotation), -np.sin(rotation)]) @ np.array([x,y])
-        rotated_y = np.array([np.sin(rotation), np.cos(rotation)]) @ np.array([x,y])
-        yaw = yaw + rotation
-        
-        self.thanos_obj_se2 = (rotated_x, rotated_y, yaw)
+        if se2z is not None:
+            self.thanos_se2 = se2z
+            x,y,_,yaw = self.thanos_se2
+            
+            rotation = -np.pi/4
+            rotated_x = np.array([np.cos(rotation), -np.sin(rotation)]) @ np.array([x,y])
+            rotated_y = np.array([np.sin(rotation), np.cos(rotation)]) @ np.array([x,y])
+            yaw = yaw + rotation
+            
+            self.thanos_obj_se2 = (rotated_x, rotated_y, yaw)
         
     def image_callback_fn(self, data: Image, se2: tuple, intrinsics: np.array):
         h,w = data.height, data.width
         cv_image = cv2.resize(self.bridge.imgmsg_to_cv2(data, "bgr8"), (w,h))
         
         # rotation = -np.pi/3 + np.pi/12
-        rotation = -np.pi/4
+        rotation = 0
         rotated_x = np.array([np.cos(rotation), -np.sin(rotation)])
         rotated_y = np.array([np.sin(rotation), np.cos(rotation)])
         
@@ -82,7 +85,6 @@ class TagVisualization:
             x = x / z
             y = y / z
             
-            intrinsics_modif = np.diag([intrinsics[0,0], intrinsics[1,1], 1])
             pixel_xy = (intrinsics @ np.array([x,y,1]))[:2]
             pixel_x = pixel_xy[0]
             pixel_y = pixel_xy[1]
@@ -109,8 +111,8 @@ class TagVisualization:
 if __name__ == '__main__':
     rospy.init_node('tag_visualization')
     tv = TagVisualization()
-    while not rospy.is_shutdown():
-        if tv.thanos_obj_se2 is not None:
-            x,y,yaw = tv.thanos_obj_se2
-            print(f"Thanos: x={x:.4f}, y={y:.4f}")
+    # while not rospy.is_shutdown():
+    #     if tv.thanos_obj_se2 is not None:
+    #         x,y,yaw = tv.thanos_obj_se2
+    #         print(f"Thanos: x={x:.4f}, y={y:.4f}")
     rospy.spin()

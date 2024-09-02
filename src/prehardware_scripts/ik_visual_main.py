@@ -60,7 +60,7 @@ class InteractiveArm:
         def callback(context, pose):
             q0 = plant.GetPositions(plant_context)
             
-            gap = 0.02
+            gap = 0.04
             modif = -30.0 * np.pi / 180 * 0
             left_pose = RigidTransform(pose.rotation().ToQuaternion(), pose.translation() + pose.rotation().matrix() @ np.array([0,0,-gap/2]))
             right_rot = RotationMatrix(pose.rotation().matrix()) @ RotationMatrix.MakeYRotation(np.pi)
@@ -90,7 +90,7 @@ class InteractiveArm:
         MaxRange.__new__.__defaults__ = (np.pi, 0, 0, 1.0, 1.0, 2.0)
         sliders = MeshcatPoseSliders(meshcat,min_range=MinRange(), max_range=MaxRange())
 
-        init_pose = RigidTransform(RollPitchYaw(np.pi/4, 0, 0), [0.32, 0.6096, 0.45])
+        init_pose = RigidTransform(RollPitchYaw(0, 0, 0), [0.32, 0.6096, 0.45])
         sliders.SetPose(init_pose)
         sliders.Run(visualizer, context, callback)
         

@@ -35,21 +35,21 @@ class ProgramState(Enum):
 
 program_state = ProgramState.HORIZONTAL
 if program_state == ProgramState.HORIZONTAL:
-    JOINT_CONFIG0 = [0.7976163168312339, 0.9319623629190059, 1.2489204038262545, -0.5245030299944773, 2.168470371109467, -1.9702547163658348, -1.802194158506494, -0.7083347786070336, 1.5136150029671391, -0.8891814051242639, -1.0040976791890155, 1.1089424299947315, -2.0943951023931944, 1.5663110190584328]
+    JOINT_CONFIG0 = [1.1429203100700507, 0.7961505418611234, -0.2334648267973291, -0.4733848043491367, -2.967059728388293, -1.8813130837959888, -2.109669307516976, -1.5677529803998187, 1.9624159075892007, -1.4980034238420221, 0.9229619082335976, -1.9288236774214953, 1.7484457277131111, -2.5145907690545455]
 elif program_state == ProgramState.TILT_30:
     #NOTE: tilt is 30 degrees
-    JOINT_CONFIG0 = [0.7326996611289416, 0.3706170793697195, 0.30509597336749494, -1.28445652524477, -2.952209087106374, -1.0667081735709343, -2.202822530205844, -1.7224812785242616, 2.072786559651427, -1.356346356084638, 1.5021891346575276, -1.5776816250106938, 1.2809848310868313, -2.941014258945538]
+    raise NotImplementedError("Tilt 30 not implemented")
 elif program_state == ProgramState.MEGA_TILTED:
-    JOINT_CONFIG0 = [0.5607851501591433, 0.270159427767919, 0.3837352835738793, -1.5478359051640667, -2.6196252829870623, -0.7676796167224749, -2.5153689121142655, -1.7619704846707227, 1.7539892990419264, -1.6494572836922463, 1.6824647196007898, -0.9841015399170356, 1.564039949946342, -3.0543261909035926]
+    raise NotImplementedError("Mega tilted not implemented")
 else:
     raise ValueError("Invalid program state")
 
 JOINT0_THANOS = np.array([JOINT_CONFIG0[:7]]).flatten()
 JOINT0_MEDUSA = np.array([JOINT_CONFIG0[7:14]]).flatten()
 
-def generate_se2_motion(q0, desired_obj2left_se2 = np.array([0.00, 0.03, 0.0]), desired_obj2right_se2 = None, gap = 0.475):
+def generate_se2_motion(q0, desired_obj2left_se2 = np.array([0.00, 0.03, 0.0]), desired_obj2right_se2 = None, gap = 0.1):
     plant_arms = MultibodyPlant(1e-3) # time step
-    load_iiwa_setup(plant_arms, package_file='../../package.xml', directive_path="../../config/bimanual_med.yaml")
+    load_iiwa_setup(plant_arms, package_file='../../package.xml', directive_path="../../config/bimanual_med_gamma.yaml")
     plant_arms.Finalize()
     
     plant_context = plant_arms.CreateDefaultContext()
