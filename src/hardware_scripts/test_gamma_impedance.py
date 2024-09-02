@@ -114,7 +114,7 @@ def follow_traj_and_torque_gamma(traj_thanos, traj_medusa, gamma_manager: GammaM
     traj_medusa_block = root_builder.AddSystem(TrajectorySource(traj_medusa))
     traj_thanos_block = root_builder.AddSystem(TrajectorySource(traj_thanos))
     
-    reactive_wrench_block = root_builder.AddSystem(ReactiveGamma(hardware_plant, gamma_manager, filter_vector_medusa = np.array([0.0, 0.0, 1.0, 1.0, 1.0, 0.0]), filter_vector_thanos=np.zeros(6)))
+    reactive_wrench_block = root_builder.AddSystem(ReactiveGamma(hardware_plant, gamma_manager, filter_vector_medusa = np.array([0.0, 0.0, 1.0, 1.0, 1.0, 0.0]), filter_vector_thanos=np.array([0.0, 0.0, 1.0, 1.0, 1.0, 0.0])))
     wrench2torque_block = root_builder.AddSystem(Wrench2Torque(hardware_plant))
     reactive_torque_demultiplexer_block = root_builder.AddSystem(Demultiplexer(14, 7))
     
@@ -163,12 +163,14 @@ if __name__ == '__main__':
                    -1.5677529803998187, 1.9624159075892007, -1.4980034238420221, 0.9229619082335976, -1.9288236774214953, 1.7484457277131111, -2.5145907690545455])
     setup_joints(joint_horiz)
     desired_gap = 0.001
+    force = 5.0
+    object_kg = 1.0
     desired_q = setup_push(desired_gap, joint_horiz)
-    start_pushing(desired_q, force=10.0, object_kg=0.5)
+    start_pushing(desired_q, force = force, object_kg = object_kg)
     zero_ati_gamma()
     
     gamma_manager = GammaManager()
-    traj_thanos, traj_medusa, T = generate_se2_motion(desired_q, desired_obj2left_se2 = np.array([0.0, -0.04, 0.0]), gap = desired_gap)
+    traj_thanos, traj_medusa, T = generate_se2_motion(desired_q, desired_obj2left_se2 = np.array([0.0, -0.04, 0.0]), desired_obj2right_se2= np.array([0.0, 0.0, np.pi + np.pi/4]), gap = desired_gap)
     input("Press Enter to start pushing with gamma")
-    follow_traj_and_torque_gamma(traj_thanos, traj_medusa, gamma_manager, force = 10.0, object_kg = 0.5, endtime = T)
+    follow_traj_and_torque_gamma(traj_thanos, traj_medusa, gamma_manager, force = force, object_kg = object_kg, endtime = T)
     pass
