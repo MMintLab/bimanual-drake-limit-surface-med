@@ -4,14 +4,9 @@ from pydrake.all import (
     StartMeshcat,
     Simulator,
     DiagramBuilder,
-    TrajectorySource,
-    Multiplexer,
     Demultiplexer,
-    RigidTransform,
     MultibodyPlant,
     DiagramBuilder,
-    PiecewisePolynomial,
-    JacobianWrtVariable,
     RotationMatrix,
     ConstantVectorSource,
     LeafSystem
@@ -19,19 +14,13 @@ from pydrake.all import (
 
 
 import rospy
-from geometry_msgs.msg import WrenchStamped, PoseStamped
+from geometry_msgs.msg import WrenchStamped
 from netft_rdt_driver.srv import Zero
 
 import sys
 sys.path.append('..')
 from diagrams import create_hardware_diagram_plant_bimanual, create_visual_diagram
-from test_impedance import goto_and_torque
-from planning.object_compensation import ApplyForce
-from load.sim_setup import load_iiwa_setup
-from run_plan_main import curr_joints, goto_joints
-from planning.hardware_util import follow_trajectory_and_torque
-from planning.ik_util import generate_push_configuration
-from test_tilted_impedance import generate_se2_motion
+from run_plan_main import curr_joints
 from test_impedance import Wrench2Torque
 
 #import blkdiag
@@ -73,11 +62,13 @@ class GammaManager:
 # zero the ATI gamma
 # feedforward the force measured by the ATI gamma
 class ReactiveGamma(LeafSystem):
-    def __init__(self, plant: MultibodyPlant, gamma_manager:  GammaManager):
+    def __init__(self, plant: MultibodyPlant, gamma_manager:  GammaManager, filter_vector_medusa = np.ones(6), filter_vector_thanos = np.ones(6)):
         LeafSystem.__init__(self)
         self._plant = plant
         self._plant_context = plant.CreateDefaultContext()
         self.gamma_manager = gamma_manager
+        self.filter_mat_medusa = np.diag(filter_vector_medusa)
+        self.filter_mat_thanos = np.diag(filter_vector_thanos)
         self.medusa_iiwa = self.DeclareVectorInputPort("medusa_iiwa", 7)
         self.thanos_iiwa = self.DeclareVectorInputPort("thanos_iiwa", 7)
         self.wrench_thanos_port = self.DeclareVectorOutputPort("wrench_thanos", 6, self.CalcWrenchThanos)
@@ -90,7 +81,7 @@ class ReactiveGamma(LeafSystem):
         thanos_rot = thanos_pose.rotation().matrix()
         
         thanos_wrench = self.gamma_manager.thanos_wrench if self.gamma_manager.thanos_wrench is not None else np.zeros(6)
-        thanos_wrench = -1 * block_diag(thanos_rot, thanos_rot) @ thanos_wrench
+        thanos_wrench = -1 * (self.filter_mat_thanos @ block_diag(thanos_rot, thanos_rot) @ thanos_wrench)
         output.SetFromVector(thanos_wrench)
     def CalcWrenchMedusa(self, context, output):
         medusa_q = self.medusa_iiwa.Eval(context)
@@ -100,8 +91,7 @@ class ReactiveGamma(LeafSystem):
         medusa_rot = medusa_pose.rotation().matrix()
         
         medusa_wrench = self.gamma_manager.medusa_wrench if self.gamma_manager.medusa_wrench is not None else np.zeros(6)
-        medusa_wrench = -1 * block_diag(medusa_rot, medusa_rot) @ medusa_wrench
-        print(medusa_wrench[3:])
+        medusa_wrench = -1 * (self.filter_mat_medusa @ block_diag(medusa_rot, medusa_rot) @ medusa_wrench)
         output.SetFromVector(medusa_wrench)
         
 def reactive_arm_force(joint_thanos, joint_medusa, gamma_manager: GammaManager, endtime = 30.0, scenario_file = "../../config/bimanual_med_hardware_impedance.yaml", directives_file = "../../config/bimanual_med.yaml"):
