@@ -30,7 +30,7 @@ class CameraParameters:
     def undistort(self, img):
         return cv2.remap(img, self.mapx, self.mapy, cv2.INTER_LINEAR)
     
-class CameraManager:
+class CameraUndistorter:
     def __init__(self):
         self.bridge = CvBridge()
         self.gelslim_left_info : CameraParameters = camerainfo2parameters(rospy.wait_for_message("/panda_1_gelslim_left/camera_info", CameraInfo))
@@ -60,5 +60,5 @@ class CameraManager:
 # This file is for republishing undistorted images
 if __name__ == '__main__':
     rospy.init_node('undistort_camera')
-    cm = CameraManager()
+    cm = CameraUndistorter()
     rospy.spin()
