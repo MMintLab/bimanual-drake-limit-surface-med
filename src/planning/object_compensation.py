@@ -63,7 +63,7 @@ class ApplyForce(LeafSystem):
             [0,0,0],
             self._W,
             self._W
-        )[:,7:]
+        )[:,:7]
         
         J_G_medusa = self._plant.CalcJacobianSpatialVelocity(
             self._plant_context,
@@ -72,7 +72,7 @@ class ApplyForce(LeafSystem):
             [0,0,0],
             self._W,
             self._W
-        )[:,:7]
+        )[:,7:]
         
         if np.isnan(J_G_thanos[3:,:]).any() or np.linalg.matrix_rank(J_G_thanos[3:,:]) < 3:
             mat_thanos = np.zeros((7,3))

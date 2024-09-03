@@ -51,8 +51,8 @@ class InteractiveArm:
         context = diagram.CreateDefaultContext()
         plant_context = plant.GetMyContextFromRoot(context)
         
-        # q0 = np.zeros(14)
-        q0 = np.array([0.7326996611289416, 0.3706170793697195, 0.30509597336749494, -1.28445652524477, -2.952209087106374, -1.0667081735709343, -2.202822530205844, -1.7224812785242616, 2.072786559651427, -1.356346356084638, 1.5021891346575276, -1.5776816250106938, 1.2809848310868313, -2.941014258945538])
+        q0 = np.zeros(14)
+        # q0 = np.array([0.7326996611289416, 0.3706170793697195, 0.30509597336749494, -1.28445652524477, -2.952209087106374, -1.0667081735709343, -2.202822530205844, -1.7224812785242616, 2.072786559651427, -1.356346356084638, 1.5021891346575276, -1.5776816250106938, 1.2809848310868313, -2.941014258945538])
 
 
         plant.SetPositions(plant_context, q0)
@@ -90,7 +90,7 @@ class InteractiveArm:
         MaxRange.__new__.__defaults__ = (np.pi, 0, 0, 1.0, 1.0, 2.0)
         sliders = MeshcatPoseSliders(meshcat,min_range=MinRange(), max_range=MaxRange())
 
-        init_pose = RigidTransform(RollPitchYaw(0, 0, 0), [0.32, 0.6096, 0.45])
+        init_pose = RigidTransform(RollPitchYaw(np.pi/2, 0, 0), [0.32, 0.6096, 0.45])
         sliders.SetPose(init_pose)
         sliders.Run(visualizer, context, callback)
         

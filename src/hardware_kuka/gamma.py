@@ -34,7 +34,7 @@ class GammaManager:
         return self.medusa_wrench
     
     @staticmethod
-    def zero_sensor(self):
+    def zero_sensor():
         rospy.wait_for_service('/netft_thanos/zero')
         rospy.wait_for_service('/netft_medusa/zero')
         zero_thanos = rospy.ServiceProxy('/netft_thanos/zero', Zero)

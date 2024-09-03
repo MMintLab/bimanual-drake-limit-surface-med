@@ -1,24 +1,27 @@
 Demo:
   directives:
-      # Add iiwa_medusa
-      - add_model:
-          name: iiwa_medusa
-          file: package://bimanual/urdf/med_gamma_shorter.urdf
-          default_joint_positions:
-              iiwa_joint_1: [0]
-              iiwa_joint_2: [0]
-              iiwa_joint_3: [0]
-              iiwa_joint_4: [0]
-              iiwa_joint_5: [0]
-              iiwa_joint_6: [0]
-              iiwa_joint_7: [0]
-      # Add iiwa_thanos
+    # Add iiwa_thanos
       - add_model:
           name: iiwa_thanos
           file: package://bimanual/urdf/med_gamma.urdf
           default_joint_positions:
               iiwa_joint_1: [0]
-              iiwa_joint_2: [0]
+              iiwa_joint_2: [0.0]
+              iiwa_joint_3: [0]
+              iiwa_joint_4: [0]
+              iiwa_joint_5: [0]
+              iiwa_joint_6: [0]
+              iiwa_joint_7: [0]
+      - add_weld:
+          parent: world
+          child: iiwa_thanos::base
+    # Add iiwa_medusa
+      - add_model:
+          name: iiwa_medusa
+          file: package://bimanual/urdf/med_gamma_shorter.urdf
+          default_joint_positions:
+              iiwa_joint_1: [0]
+              iiwa_joint_2: [0.0]
               iiwa_joint_3: [0]
               iiwa_joint_4: [0]
               iiwa_joint_5: [0]
@@ -33,9 +36,6 @@ Demo:
       - add_weld:
           parent: iiwa_medusa_origin
           child: iiwa_medusa::base
-      - add_weld:
-          parent: world
-          child: iiwa_thanos::base
       # Add finger frames
       - add_frame:
           name: thanos_finger

@@ -14,7 +14,16 @@ from camera import CameraManager
 import sys
 sys.path.append('..')
 from load.sim_setup import load_iiwa_setup
-from movement_lib import goto_joints, curr_joints, curr_desired_joints, close_arms, direct_joint_torque
+from movement_lib import (
+    goto_joints,
+    curr_joints,
+    curr_desired_joints,
+    close_arms,
+    direct_joint_torque,
+    inhand_rotate_traj,
+    generate_trajectory,
+    follow_trajectory_apply_push
+)
 
 
 class BimanualKuka:
@@ -36,6 +45,9 @@ class BimanualKuka:
         self.grasp_force = grasp_force # grasp force to apply in +z direction (in end-effector frame)
         self.objfeedforward_force = 10.0 # feedforward force to apply in +z direction (in end-effector frame)
         
+        self.home_q = [1.0702422097407691, 0.79111135304063, 0.039522481390182704, -0.47337899137126993, -0.029476186840982563, 1.8773559661476429, 1.0891375237383238,
+                    -0.6243724965777308, 1.8539706319471008, -1.419344148470764, -0.9229579763233258, 1.7124576303632164, -1.8588769537333005, 1.5895425219089256]
+        self.home_q = np.array(self.home_q)
     def get_poses(self, q):
         self._plant.SetPositions(self._plant_context, self._plant.GetModelInstanceByName("iiwa_thanos"), q[:7])
         self._plant.SetPositions(self._plant_context, self._plant.GetModelInstanceByName("iiwa_medusa"), q[7:])
@@ -52,20 +64,19 @@ class BimanualKuka:
     # move arms towards setup position
     def go_home(self):
         curr_q = curr_joints(scenario_file=self.scenario_file)
-        home_q = [1.3507202126267908, 1.0306422492340395, 1.4623797469261657, 0.47340482371611614, -1.7470723329576021, 2.0943951023905236, 0.7999247983754085,
-                  -1.4783288067442353, 1.644651108471463, 0.9608959783544273, -0.9229792723727335, -1.2343844303404459, -2.0943951023776375, 0.6230349606485529]
-        home_q = np.array(home_q)
         
         joint_speed = 5.0 * np.pi / 180.0
-        medusa_endtime = np.max(np.abs(home_q[:7] - curr_q[:7])) / joint_speed
-        thanos_endtime = np.max(np.abs(home_q[7:] - curr_q[7:])) / joint_speed
+        
+        thanos_endtime = np.max(np.abs(self.home_q[:7] - curr_q[:7])) / joint_speed
+        medusa_endtime = np.max(np.abs(self.home_q[7:] - curr_q[7:])) / joint_speed
+        
         print("medusa_endtime: ", medusa_endtime)
         print("thanos_endtime: ", thanos_endtime)
         
         input("Press Enter to setup medusa arm.")
-        goto_joints(curr_q[:7], home_q[7:], endtime=medusa_endtime, scenario_file=self.scenario_file, directives_file=self.directives_file)
+        goto_joints(curr_q[:7], self.home_q[7:], endtime=medusa_endtime, scenario_file=self.scenario_file, directives_file=self.directives_file)
         input("Press Enter to setup thanos arm.")
-        goto_joints(home_q[:7], home_q[7:], endtime=thanos_endtime, scenario_file=self.scenario_file, directives_file=self.directives_file)
+        goto_joints(self.home_q[:7], self.home_q[7:], endtime=thanos_endtime, scenario_file=self.scenario_file, directives_file=self.directives_file)
     def close_gripper(self, gap = 0.001):
         curr_des_q = curr_desired_joints(scenario_file=self.scenario_file)
         input("Press Enter to close gripper")
@@ -80,13 +91,26 @@ class BimanualKuka:
         wrench_thanos = np.concatenate([np.zeros(3), wrench_thanos])
         wrench_medusa = np.concatenate([np.zeros(3), wrench_medusa])
         direct_joint_torque(des_q[:7], des_q[7:], wrench_thanos, wrench_medusa, endtime=5.0, scenario_file=self.scenario_file, directives_file=self.directives_file)
-    
+        
     def setup_robot(self):
         self.go_home()
         self.close_gripper()
+        self.gamma_manager.zero_sensor()
+        
+    def rotate_arms(self, rotation, rotate_steps = 30, rotate_time = 30.0, gap = 0.001):
+        curr_des_q = curr_desired_joints(scenario_file=self.scenario_file)
+        thanos_pose, medusa_pose = self.get_poses(curr_des_q)
+        object_pose0 = RigidTransform(thanos_pose.rotation().ToQuaternion(), thanos_pose.translation() + thanos_pose.rotation().matrix() @ np.array([0,0,gap/2.0]))
+        
+        thanos_ee_piecewise, medusa_ee_piecewise, T = inhand_rotate_traj(rotation, rotate_steps, rotate_time, thanos_pose, medusa_pose, object_pose0)
+        thanos_piecewise, medusa_piecewise, T = generate_trajectory(self._plant, curr_des_q, thanos_ee_piecewise, medusa_ee_piecewise, T, tsteps=100)
+        
+        input("Press Enter to rotate arms")
+        follow_trajectory_apply_push(thanos_piecewise, medusa_piecewise, force=30.0, endtime = T, scenario_file=self.scenario_file, directives_file=self.directives_file)
         
 if __name__ == "__main__":
     rospy.init_node("bimanual_kuka")
     bimanual_kuka = BimanualKuka()
     bimanual_kuka.setup_robot()
+    bimanual_kuka.rotate_arms(-np.pi/4)
     rospy.spin()
