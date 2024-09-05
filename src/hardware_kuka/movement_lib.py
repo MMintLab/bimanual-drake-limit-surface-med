@@ -12,16 +12,21 @@ from pydrake.all import (
     RollPitchYaw,
     Demultiplexer,
     ConstantVectorSource,
-    Multiplexer
+    Multiplexer,
+    PiecewisePose,
+    Adder,
+    LeafSystem
 )
 import numpy as np
 
 import sys
 sys.path.append('..')
 from diagrams import create_hardware_diagram_plant_bimanual, create_visual_diagram
-from planning.ik_util import solveDualIK, inhand_rotate_poses, pause_for, piecewise_traj, solve_ik_inhand
+from planning.ik_util import solveDualIK, inhand_rotate_poses, pause_for, piecewise_traj, solve_ik_inhand, inhand_rotate_arms, inhand_se2_arms
 from bimanual_systems import Wrench2Torque
 from planning.object_compensation import ApplyForce
+from gamma import GammaManager
+from scipy.linalg import block_diag
 
 def curr_joints(scenario_file = "../../config/bimanual_med_hardware.yaml"):
     hardware_diagram, hardware_plant = create_hardware_diagram_plant_bimanual(scenario_filepath=scenario_file, meshcat=None, position_only=True)
@@ -153,6 +158,99 @@ def follow_trajectory_apply_push(traj_thanos, traj_medusa, force = 30.0, endtime
     simulator.set_target_realtime_rate(1.0)
     simulator.AdvanceTo(endtime + 5.0)
 
+class ReactiveGamma(LeafSystem):
+    def __init__(self, plant: MultibodyPlant, gamma_manager:  GammaManager, filter_vector_medusa = np.ones(6), filter_vector_thanos = np.ones(6)):
+        LeafSystem.__init__(self)
+        self._plant = plant
+        self._plant_context = plant.CreateDefaultContext()
+        self.gamma_manager = gamma_manager
+        self.filter_mat_medusa = np.diag(filter_vector_medusa)
+        self.filter_mat_thanos = np.diag(filter_vector_thanos)
+        self.medusa_iiwa = self.DeclareVectorInputPort("medusa_iiwa", 7)
+        self.thanos_iiwa = self.DeclareVectorInputPort("thanos_iiwa", 7)
+        self.wrench_thanos_port = self.DeclareVectorOutputPort("wrench_thanos", 6, self.CalcWrenchThanos)
+        self.wrench_medusa_port = self.DeclareVectorOutputPort("wrench_medusa", 6, self.CalcWrenchMedusa)
+    def CalcWrenchThanos(self, context, output):
+        thanos_q = self.thanos_iiwa.Eval(context)
+        self._plant.SetPositions(self._plant_context, self._plant.GetModelInstanceByName("iiwa_thanos"), thanos_q)
+        
+        thanos_pose = self._plant.GetFrameByName("thanos_finger").CalcPoseInWorld(self._plant_context)
+        thanos_rot = thanos_pose.rotation().matrix()
+        
+        thanos_wrench = self.gamma_manager.thanos_wrench if self.gamma_manager.thanos_wrench is not None else np.zeros(6)
+        thanos_wrench = -1 * (block_diag(thanos_rot, thanos_rot) @ self.filter_mat_thanos @ thanos_wrench)
+        output.SetFromVector(thanos_wrench)
+    def CalcWrenchMedusa(self, context, output):
+        medusa_q = self.medusa_iiwa.Eval(context)
+        self._plant.SetPositions(self._plant_context, self._plant.GetModelInstanceByName("iiwa_medusa"), medusa_q)
+        
+        medusa_pose = self._plant.GetFrameByName("medusa_finger").CalcPoseInWorld(self._plant_context)
+        medusa_rot = medusa_pose.rotation().matrix()
+        
+        medusa_wrench = self.gamma_manager.medusa_wrench if self.gamma_manager.medusa_wrench is not None else np.zeros(6)
+        medusa_wrench = -1 * (block_diag(medusa_rot, medusa_rot) @ self.filter_mat_medusa @ medusa_wrench)
+        print(medusa_wrench)
+        output.SetFromVector(medusa_wrench)
+
+def follow_traj_and_torque_gamma(traj_thanos, traj_medusa, gamma_manager: GammaManager, force = 30.0, object_kg = 0.5, endtime = 1e12, scenario_file = "../../config/bimanual_med_hardware_gamma.yaml", directives_file = "../../config/bimanual_med_gamma.yaml"):
+    meshcat = StartMeshcat()
+    
+    root_builder = DiagramBuilder()
+    hardware_diagram, hardware_plant = create_hardware_diagram_plant_bimanual(scenario_filepath=scenario_file, position_only=False, meshcat = meshcat)
+    vis_diagram = create_visual_diagram(directives_filepath=directives_file, meshcat=meshcat, package_file="../../package.xml")
+    
+    hardware_block = root_builder.AddSystem(hardware_diagram)
+    
+    apply_torque_block = root_builder.AddSystem(ApplyForce(hardware_plant, object_kg = object_kg, force=force))
+    torque_demultiplexer_block = root_builder.AddSystem(Demultiplexer(14, 7))
+    
+    traj_medusa_block = root_builder.AddSystem(TrajectorySource(traj_medusa))
+    traj_thanos_block = root_builder.AddSystem(TrajectorySource(traj_thanos))
+    
+    reactive_wrench_block = root_builder.AddSystem(ReactiveGamma(hardware_plant, gamma_manager, filter_vector_medusa = np.array([0.0, 0.0, 1.0, 1.0, 1.0, 0.0]), filter_vector_thanos=np.array([0.0, 0.0, 1.0, 1.0, 1.0, 0.0])))
+    wrench2torque_block = root_builder.AddSystem(Wrench2Torque(hardware_plant))
+    reactive_torque_demultiplexer_block = root_builder.AddSystem(Demultiplexer(14, 7))
+    
+    adder_torque_thanos_block = root_builder.AddSystem(Adder(2, 7))
+    adder_torque_medusa_block = root_builder.AddSystem(Adder(2, 7))
+    
+    root_builder.Connect(traj_thanos_block.get_output_port(), hardware_block.GetInputPort("iiwa_thanos.position"))
+    root_builder.Connect(traj_thanos_block.get_output_port(), hardware_block.GetInputPort("iiwa_thanos_fake.position"))
+    
+    root_builder.Connect(traj_medusa_block.get_output_port(), hardware_block.GetInputPort("iiwa_medusa.position"))
+    root_builder.Connect(traj_medusa_block.get_output_port(), hardware_block.GetInputPort("iiwa_medusa_fake.position"))
+    
+    
+    # connections for reactive torque
+    root_builder.Connect(hardware_block.GetOutputPort("iiwa_thanos.position_measured"), reactive_wrench_block.GetInputPort("thanos_iiwa"))
+    root_builder.Connect(hardware_block.GetOutputPort("iiwa_medusa.position_measured"), reactive_wrench_block.GetInputPort("medusa_iiwa"))
+    root_builder.Connect(hardware_block.GetOutputPort("iiwa_thanos.position_measured"), wrench2torque_block.GetInputPort("thanos_position"))
+    root_builder.Connect(hardware_block.GetOutputPort("iiwa_medusa.position_measured"), wrench2torque_block.GetInputPort("medusa_position"))
+    root_builder.Connect(reactive_wrench_block.GetOutputPort("wrench_thanos"), wrench2torque_block.GetInputPort("wrench_thanos"))
+    root_builder.Connect(reactive_wrench_block.GetOutputPort("wrench_medusa"), wrench2torque_block.GetInputPort("wrench_medusa"))
+    root_builder.Connect(wrench2torque_block.GetOutputPort("torque"), reactive_torque_demultiplexer_block.get_input_port())
+    
+    # connections for apply torque
+    root_builder.Connect(hardware_block.GetOutputPort("iiwa_thanos.position_measured"), apply_torque_block.GetInputPort("thanos_position"))
+    root_builder.Connect(hardware_block.GetOutputPort("iiwa_medusa.position_measured"), apply_torque_block.GetInputPort("medusa_position"))
+    root_builder.Connect(apply_torque_block.GetOutputPort("torque"), torque_demultiplexer_block.get_input_port())
+    
+    # sum torques
+    root_builder.Connect(torque_demultiplexer_block.get_output_port(0), adder_torque_thanos_block.get_input_port(0))
+    root_builder.Connect(reactive_torque_demultiplexer_block.get_output_port(0), adder_torque_thanos_block.get_input_port(1))
+    
+    root_builder.Connect(torque_demultiplexer_block.get_output_port(1), adder_torque_medusa_block.get_input_port(0))
+    root_builder.Connect(reactive_torque_demultiplexer_block.get_output_port(1), adder_torque_medusa_block.get_input_port(1))
+    
+    # connect to hardware feedforward torque
+    root_builder.Connect(adder_torque_thanos_block.get_output_port(), hardware_block.GetInputPort("iiwa_thanos.feedforward_torque"))
+    root_builder.Connect(adder_torque_medusa_block.get_output_port(), hardware_block.GetInputPort("iiwa_medusa.feedforward_torque"))
+    
+    root_diagram = root_builder.Build()
+    simulator = Simulator(root_diagram)
+    simulator.set_target_realtime_rate(1.0)
+    simulator.AdvanceTo(endtime + 2.0)
+
 def close_arms(plant_arms: MultibodyPlant, plant_context, q0, gap = 0.0001):
     plant_arms.SetPositions(plant_context, plant_arms.GetModelInstanceByName("iiwa_thanos"), q0[:7])
     plant_arms.SetPositions(plant_context, plant_arms.GetModelInstanceByName("iiwa_medusa"), q0[7:14])
@@ -172,20 +270,28 @@ def close_arms(plant_arms: MultibodyPlant, plant_context, q0, gap = 0.0001):
     
     return new_joints
 
-def inhand_rotate_traj(rotation, rotate_steps, rotate_time, left_pose0, right_pose0, object_pose0):
-    left_poses = [left_pose0]
-    right_poses = [right_pose0]
-    obj_poses = [object_pose0]
-    ts = [0.0]
-    
-    ts, left_poses, right_poses, obj_poses = pause_for(1.0, ts, left_poses, right_poses, obj_poses)
-    ts, left_poses, right_poses, obj_poses = inhand_rotate_poses(rotation, object_pose0, ts, left_poses, right_poses, obj_poses, steps=rotate_steps, rotate_time=rotate_time)
-    ts, left_poses, right_poses, obj_poses = pause_for(1.0, ts, left_poses, right_poses, obj_poses)
-    left_piecewise, right_piecewise, _ = piecewise_traj(ts, left_poses, right_poses, obj_poses)
-    return left_piecewise, right_piecewise, ts[-1]
 def generate_trajectory(plant_arms: MultibodyPlant, q0, left_piecewise, right_piecewise, T, tsteps = 100):
     ts = np.linspace(0, T, tsteps)
     qs = solve_ik_inhand(plant_arms, ts, left_piecewise, right_piecewise, "thanos_finger", "medusa_finger", q0)
     thanos_piecewise = PiecewisePolynomial.FirstOrderHold(ts, qs[:,:7].T)
     medusa_piecewise = PiecewisePolynomial.FirstOrderHold(ts, qs[:,7:].T)
     return thanos_piecewise, medusa_piecewise, T
+
+def inhand_rotate_traj(rotation, rotate_steps, rotate_time, left_pose0: RigidTransform, right_pose0: RigidTransform, current_obj2medusa_se2 = np.array([0.00,0.0,0])):
+    ts, left_poses, right_poses = inhand_rotate_arms(left_pose0, right_pose0, current_obj2medusa_se2, rotation=rotation, steps=rotate_steps, rotate_time=rotate_time)
+    
+    left_piecewise = PiecewisePose.MakeLinear(ts, left_poses)
+    right_piecewise = PiecewisePose.MakeLinear(ts, right_poses)
+    return left_piecewise, right_piecewise, ts[-1]
+
+def inhand_se2_traj(left_pose0: RigidTransform, right_pose0: RigidTransform, current_obj2arm_se2 = np.array([0.00,0.0,0]), desired_obj2arm_se2 = np.array([0.00,0.0,0]),medusa = True, se2_time = 10.0):
+    left_pose, right_pose = inhand_se2_arms(left_pose0, right_pose0, current_obj2arm_se2, desired_obj2arm_se2, medusa=medusa)
+    
+    left_poses = [left_pose0, left_pose]
+    right_poses = [right_pose0, right_pose]
+    ts = [0, se2_time]
+    
+    left_piecewise = PiecewisePose.MakeLinear(ts, left_poses)
+    right_piecewise = PiecewisePose.MakeLinear(ts, right_poses)
+    
+    return left_piecewise, right_piecewise, ts[-1]

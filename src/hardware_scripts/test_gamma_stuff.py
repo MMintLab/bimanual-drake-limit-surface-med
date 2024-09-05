@@ -149,7 +149,6 @@ if __name__ == '__main__':
     directives_file = "../../config/bimanual_med_gamma.yaml"
     
     curr_q = curr_joints()
-    des_q = JOINT_CONFIG0
     
     
     input("Press Enter to zero gammas.")

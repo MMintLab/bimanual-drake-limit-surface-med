@@ -40,7 +40,7 @@ class Wrench2Torque(LeafSystem):
                                                            [0,0,0],
                                                            self._plant.world_frame(),
                                                            self._plant.world_frame())[:, 7:]
-        
+
         thanos_torque = J_thanos.T @ wrench_thanos
         medusa_torque = J_medusa.T @ wrench_medusa
         output.SetFromVector(np.concatenate([thanos_torque, medusa_torque]))

@@ -338,20 +338,53 @@ def generate_push_configuration(plant_arms: MultibodyPlant, q0, gap = 0.475):
 def inhand_rotate_arms(thanos_pose: RigidTransform, medusa_pose: RigidTransform, obj2medusa_se2: np.ndarray, rotation = np.pi/4, steps = 30, rotate_time = 10.0):
     # assume spatial X rotation is for rotating
     thanos2medusa = medusa_pose.inverse() @ thanos_pose
-    gap = np.abs(thanos2medusa.translation()[2])
+    gap = thanos2medusa.translation()[2]
     
     # get object pose relative to medusa, assume z = gap, roll,pitch = 0
     x,y,yaw = obj2medusa_se2
-    obj2medusa = RigidTransform(RotationMatrix.MakeZRotation(yaw), np.array([x,y,gap]))
+    obj2medusa = RigidTransform(RotationMatrix.MakeZRotation(yaw), np.array([x,y,gap/2.0]))
     obj2world: RigidTransform = medusa_pose @ obj2medusa
+    medusa2obj = obj2medusa.inverse()
+    thanos2obj = obj2world.inverse() @ thanos_pose
     
-    obj2world_from_rotations = [RigidTransform(obj2world.rotation() @ RotationMatrix.MakeXRotation(angle), obj2world.translation()) for angle in np.linspace(0, rotation, steps)]
-    obj2medusa_from_rotations = [medusa_pose.inverse() @ obj2world for obj2world in obj2world_from_rotations]
-    obj2thanos_from_rotations = [thanos_pose.inverse() @ obj2world for obj2world in obj2world_from_rotations]
+    obj2world_from_rotations = [RigidTransform(RotationMatrix.MakeXRotation(angle) @ obj2world.rotation(), obj2world.translation()) for angle in np.linspace(0, rotation, steps)]
+    medusa2world_from_rotations = [obj2world_from_rotation @ medusa2obj for obj2world_from_rotation in obj2world_from_rotations]
+    thanos2world_from_rotations = [obj2world_from_rotation @ thanos2obj for obj2world_from_rotation in obj2world_from_rotations]
     
     ts = np.linspace(0, rotate_time, steps)
-    return ts, obj2thanos_from_rotations, obj2medusa_from_rotations, obj2world_from_rotations
+    return ts, thanos2world_from_rotations, medusa2world_from_rotations
 
-def inhand_se2_arms(thanos_pose: RigidTransform, medusa_pose: RigidTransform, obj2arm_se2: np.ndarray, move_medusa = True):
+def inhand_se2_arms(thanos_pose: RigidTransform, medusa_pose: RigidTransform, current_obj2arm_se2: np.ndarray, desired_obj2arm_se2: np.ndarray, medusa = True):
+    thanos2medusa = medusa_pose.inverse() @ thanos_pose
+    gap = thanos2medusa.translation()[2]
     
-    # if move_medusa, obj2arm_se2 => obj2medusa_se2
+    if medusa: #medusa doesn't move, thanos moves
+        obj2medusa_se2 = current_obj2arm_se2
+        x,y,yaw = obj2medusa_se2
+        obj2medusa = RigidTransform(RotationMatrix.MakeZRotation(yaw), np.array([x,y,gap/2.0]))
+        obj2world: RigidTransform = medusa_pose @ obj2medusa
+        thanos2obj = obj2world.inverse() @ thanos_pose
+        
+        desired_obj2medusa_se2 = desired_obj2arm_se2
+        x,y,yaw = desired_obj2medusa_se2
+        desired_obj2medusa = RigidTransform(RotationMatrix.MakeZRotation(yaw), np.array([x,y,gap/2.0]))
+        desired_obj2world: RigidTransform = medusa_pose @ desired_obj2medusa
+        
+        desired_thanos2world = desired_obj2world @ thanos2obj
+        desired_medusa2world = medusa_pose
+    else:
+        obj2thanos_se2 = current_obj2arm_se2
+        x,y,yaw = obj2thanos_se2
+        obj2thanos = RigidTransform(RotationMatrix.MakeZRotation(yaw), np.array([x,y,gap/2.0]))
+        obj2world: RigidTransform = thanos_pose @ obj2thanos
+        medusa2obj = obj2world.inverse() @ medusa_pose
+        
+        desired_obj2thanos_se2 = desired_obj2arm_se2
+        x,y,yaw = desired_obj2thanos_se2
+        desired_obj2thanos = RigidTransform(RotationMatrix.MakeZRotation(yaw), np.array([x,y,gap/2.0]))
+        desired_obj2world: RigidTransform = thanos_pose @ desired_obj2thanos
+        
+        desired_medusa2world = desired_obj2world @ medusa2obj
+        desired_thanos2world = thanos_pose
+
+    return desired_thanos2world, desired_medusa2world

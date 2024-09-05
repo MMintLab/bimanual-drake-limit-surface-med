@@ -22,7 +22,9 @@ from movement_lib import (
     direct_joint_torque,
     inhand_rotate_traj,
     generate_trajectory,
-    follow_trajectory_apply_push
+    follow_trajectory_apply_push,
+    inhand_se2_traj,
+    follow_traj_and_torque_gamma
 )
 
 
@@ -77,7 +79,7 @@ class BimanualKuka:
         goto_joints(curr_q[:7], self.home_q[7:], endtime=medusa_endtime, scenario_file=self.scenario_file, directives_file=self.directives_file)
         input("Press Enter to setup thanos arm.")
         goto_joints(self.home_q[:7], self.home_q[7:], endtime=thanos_endtime, scenario_file=self.scenario_file, directives_file=self.directives_file)
-    def close_gripper(self, gap = 0.001):
+    def close_gripper(self, gap = 0.0005):
         curr_des_q = curr_desired_joints(scenario_file=self.scenario_file)
         input("Press Enter to close gripper")
         des_q = close_arms(self._plant, self._plant_context, curr_des_q, gap=gap)
@@ -97,20 +99,46 @@ class BimanualKuka:
         self.close_gripper()
         self.gamma_manager.zero_sensor()
         
-    def rotate_arms(self, rotation, rotate_steps = 30, rotate_time = 30.0, gap = 0.001):
+    def rotate_arms(self, rotation, rotate_steps = 30, rotate_time = 30.0):
         curr_des_q = curr_desired_joints(scenario_file=self.scenario_file)
         thanos_pose, medusa_pose = self.get_poses(curr_des_q)
-        object_pose0 = RigidTransform(thanos_pose.rotation().ToQuaternion(), thanos_pose.translation() + thanos_pose.rotation().matrix() @ np.array([0,0,gap/2.0]))
+        current_obj2medusa_se2 = self.camera_manager.get_medusa_se2()
         
-        thanos_ee_piecewise, medusa_ee_piecewise, T = inhand_rotate_traj(rotation, rotate_steps, rotate_time, thanos_pose, medusa_pose, object_pose0)
+        thanos_ee_piecewise, medusa_ee_piecewise, T = inhand_rotate_traj(rotation, rotate_steps, rotate_time, thanos_pose, medusa_pose, current_obj2medusa_se2)
         thanos_piecewise, medusa_piecewise, T = generate_trajectory(self._plant, curr_des_q, thanos_ee_piecewise, medusa_ee_piecewise, T, tsteps=100)
         
         input("Press Enter to rotate arms")
         follow_trajectory_apply_push(thanos_piecewise, medusa_piecewise, force=30.0, endtime = T, scenario_file=self.scenario_file, directives_file=self.directives_file)
         
+    def se2_arms(self, desired_obj2arm_se2, medusa = True, se2_time = 10.0, force = 10.0, object_kg = 1.0):
+        curr_des_q = curr_desired_joints(scenario_file=self.scenario_file)
+        thanos_pose, medusa_pose = self.get_poses(curr_des_q)
+        
+        
+        current_obj2arm_se2 = self.camera_manager.get_medusa_se2() if medusa else self.camera_manager.get_thanos_se2()
+        thanos_ee_piecewise, medusa_ee_piecewise, T = inhand_se2_traj(thanos_pose, medusa_pose, current_obj2arm_se2, desired_obj2arm_se2, medusa=medusa, se2_time=se2_time)
+        
+        thanos_piecewise, medusa_piecewise, T = generate_trajectory(self._plant, curr_des_q, thanos_ee_piecewise, medusa_ee_piecewise, T, tsteps=100)
+        
+        print("current_obj2arm_se2: ", current_obj2arm_se2)
+        input("Press Enter to move arms")
+        self.gamma_manager.zero_sensor()
+        print("Starting to follow trajectory")
+        
+        follow_traj_and_torque_gamma(thanos_piecewise, medusa_piecewise, self.gamma_manager, force=force, object_kg=1.0, endtime = T, scenario_file=self.scenario_file, directives_file=self.directives_file)
+        print("Finished following trajectory")
 if __name__ == "__main__":
     rospy.init_node("bimanual_kuka")
-    bimanual_kuka = BimanualKuka()
+    bimanual_kuka = BimanualKuka(scenario_file="../../config/bimanual_med_hardware_gamma.yaml", directives_file="../../config/bimanual_med_gamma.yaml")
     bimanual_kuka.setup_robot()
-    bimanual_kuka.rotate_arms(-np.pi/4)
+    # bimanual_kuka.rotate_arms(np.pi/6)
+    
+    # bimanual_kuka.se2_arms(np.array([0,-0.03,np.pi]), medusa=False, se2_time=10.0, force = 10.0)
+    
+    thanos_pose = bimanual_kuka.camera_manager.get_thanos_se2()
+    thanos_pose[2] += np.pi/2
+    bimanual_kuka.se2_arms(thanos_pose, medusa=False, se2_time=30.0, force = 5.0, object_kg = 1.0)
+    
+    # bimanual_kuka.rotate_arms(-np.pi/6)
+    print("Finished demo")
     rospy.spin()

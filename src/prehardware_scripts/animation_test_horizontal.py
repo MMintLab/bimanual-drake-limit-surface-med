@@ -7,30 +7,26 @@ from pydrake.systems.framework import DiagramBuilder
 from pydrake.math import RigidTransform
 from pydrake.visualization import AddDefaultVisualization
 from manipulation.scenarios import AddMultibodyTriad
-from pydrake.all import Quaternion
+from pydrake.all import Quaternion, PiecewisePose
 import numpy as np
-from planning.ik_util import solve_ik_inhand, pause_for, inhand_se2_poses, piecewise_joints, run_full_inhand_og, piecewise_traj, inhand_rotate_poses, inhand_rotate_arms
+from planning.ik_util import solve_ik_inhand, pause_for, inhand_se2_poses, piecewise_joints, inhand_rotate_arms, inhand_se2_arms
 
 JOINT0   = [1.0702422097407691, 0.79111135304063, 0.039522481390182704, -0.47337899137126993, -0.029476186840982563, 1.8773559661476429, 1.0891375237383238,
             -0.6243724965777308, 1.8539706319471008, -1.419344148470764, -0.9229579763233258, 1.7124576303632164, -1.8588769537333005, 1.5895425219089256]
-GAP = 0.04
-def inhand_test(left_pose0: RigidTransform, right_pose0: RigidTransform):
-    left_poses = [left_pose0]
-    right_poses = [right_pose0]
-    obj_poses = [object_pose0]
-    ts = [0.0]
+
+def inhand_test(left_pose0: RigidTransform, right_pose0: RigidTransform, current_obj2medusa_se2 = np.array([0.01,0.01,np.pi/4])):
+    ts, left_poses, right_poses = inhand_rotate_arms(left_pose0, right_pose0, current_obj2medusa_se2, rotation=np.pi/4, rotate_time = 30.0)
     
-    rotation = -np.pi/4
-    rotate_steps = 30
-    rotate_time  = 30.0
+    return ts, left_poses, right_poses
+def inhand_test_se2(left_pose0: RigidTransform, right_pose0: RigidTransform, current_obj2arm_se2 = np.array([0.00,0.0,0]), desired_obj2arm_se2 = np.array([0.00,0.0,0]),medusa = True, se2_time = 10.0):
+    left_pose, right_pose = inhand_se2_arms(left_pose0, right_pose0, current_obj2arm_se2, desired_obj2arm_se2, medusa=medusa)
     
-    ts, left_poses, right_poses, obj_poses = pause_for(1.0, ts, left_poses, right_poses, obj_poses)
-    ts, left_poses, right_poses, obj_poses = inhand_rotate_poses(rotation, object_pose0, ts, left_poses, right_poses, obj_poses, steps=rotate_steps, rotate_time=rotate_time)
+    left_poses = [left_pose0, left_pose]
+    right_poses = [right_pose0, right_pose]
+    ts = [0, se2_time]
     
-    ts, left_poses, right_poses, obj_poses = pause_for(2.0, ts, left_poses, right_poses, obj_poses)
-    
-    return ts, left_poses, right_poses, obj_poses
-    
+    return ts, left_poses, right_poses
+
 def generate_traj():
     plant_arms = MultibodyPlant(1e-3) # time step
     load_iiwa_setup(plant_arms, package_file='../../package.xml', directive_path="../../config/bimanual_med_gamma.yaml")
@@ -44,8 +40,10 @@ def generate_traj():
     left_pose0 = plant_arms.GetFrameByName("thanos_finger").CalcPoseInWorld(plant_context)
     right_pose0 = plant_arms.GetFrameByName("medusa_finger").CalcPoseInWorld(plant_context)
     
-    ts, left_poses, right_poses, obj_poses = inhand_test(left_pose0, right_pose0)
-    left_piecewise, right_piecewise, _ = piecewise_traj(ts, left_poses, right_poses, obj_poses)
+    # ts, left_poses, right_poses = inhand_test(left_pose0, right_pose0)
+    ts, left_poses, right_poses = inhand_test_se2(left_pose0, right_pose0, current_obj2arm_se2 = np.array([0.00,0.00,0.0]), desired_obj2arm_se2 = np.array([0.00,0.03,np.pi]), medusa=False)
+    left_piecewise = PiecewisePose.MakeLinear(ts, left_poses)
+    right_piecewise = PiecewisePose.MakeLinear(ts, right_poses)
     
     T = ts[-1]
     
