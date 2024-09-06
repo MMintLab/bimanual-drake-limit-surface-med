@@ -50,6 +50,15 @@ class BimanualKuka:
         self.home_q = [1.0702422097407691, 0.79111135304063, 0.039522481390182704, -0.47337899137126993, -0.029476186840982563, 1.8773559661476429, 1.0891375237383238,
                     -0.6243724965777308, 1.8539706319471008, -1.419344148470764, -0.9229579763233258, 1.7124576303632164, -1.8588769537333005, 1.5895425219089256]
         self.home_q = np.array(self.home_q)
+    def goto_joints(self, thanos_q, medusa_q, joint_speed=5.0, endtime = None):
+        if endtime is None:
+            curr_q = curr_joints(scenario_file=self.scenario_file)
+            thanos_endtime = np.max(np.abs(thanos_q - curr_q[:7])) / joint_speed
+            medusa_endtime = np.max(np.abs(medusa_q - curr_q[7:])) / joint_speed
+            endtime = np.max([thanos_endtime, medusa_endtime])
+        goto_joints(thanos_q, medusa_q, endtime=endtime, scenario_file=self.scenario_file, directives_file=self.directives_file)
+        
+        
     def get_poses(self, q):
         self._plant.SetPositions(self._plant_context, self._plant.GetModelInstanceByName("iiwa_thanos"), q[:7])
         self._plant.SetPositions(self._plant_context, self._plant.GetModelInstanceByName("iiwa_medusa"), q[7:])
