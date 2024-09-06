@@ -23,10 +23,11 @@ import sys
 sys.path.append('..')
 from diagrams import create_hardware_diagram_plant_bimanual, create_visual_diagram
 from planning.ik_util import solveDualIK, inhand_rotate_poses, pause_for, piecewise_traj, solve_ik_inhand, inhand_rotate_arms, inhand_se2_arms
-from bimanual_systems import Wrench2Torque
+from bimanual_systems import Wrench2Torque, ApplyForceCompensateGravity
 from planning.object_compensation import ApplyForce
 from gamma import GammaManager
 from scipy.linalg import block_diag
+from camera import CameraManager
 
 def curr_joints(scenario_file = "../../config/bimanual_med_hardware.yaml"):
     hardware_diagram, hardware_plant = create_hardware_diagram_plant_bimanual(scenario_filepath=scenario_file, meshcat=None, position_only=True)
@@ -127,7 +128,7 @@ def direct_joint_torque(joint_thanos, joint_medusa, wrench_thanos, wrench_medusa
     simulator.set_target_realtime_rate(1.0)
     simulator.AdvanceTo(endtime + 1.0)    
 
-def follow_trajectory_apply_push(traj_thanos, traj_medusa, force = 30.0, endtime = 1e12, scenario_file = "../../config/bimanual_med_hardware_gamma.yaml", directives_file = "../../config/bimanual_med_gamma.yaml"):
+def follow_trajectory_apply_push(traj_thanos, traj_medusa, camera_manager: CameraManager, force = 30.0, object_kg = 0.5, feedforward_z_force = 0.0, endtime = 1e12, scenario_file = "../../config/bimanual_med_hardware_gamma.yaml", directives_file = "../../config/bimanual_med_gamma.yaml"):
     meshcat = StartMeshcat()
         
     root_builder = DiagramBuilder()
@@ -135,7 +136,8 @@ def follow_trajectory_apply_push(traj_thanos, traj_medusa, force = 30.0, endtime
     vis_diagram = create_visual_diagram(directives_filepath=directives_file, meshcat=meshcat, package_file="../../package.xml")
     
     hardware_block = root_builder.AddSystem(hardware_diagram)
-    apply_torque_block = root_builder.AddSystem(ApplyForce(hardware_plant, object_kg = 1.0, force=force))
+    # apply_torque_block = root_builder.AddSystem(ApplyForce(hardware_plant, object_kg = 1.0, force=force))
+    apply_torque_block = root_builder.AddSystem(ApplyForceCompensateGravity(hardware_plant, camera_manager, object_kg = object_kg, applied_force=force, feedforward_z_force=feedforward_z_force))
     torque_demultiplexer_block = root_builder.AddSystem(Demultiplexer(14, 7))
     
     traj_medusa_block = root_builder.AddSystem(TrajectorySource(traj_medusa))
@@ -183,16 +185,15 @@ class ReactiveGamma(LeafSystem):
     def CalcWrenchMedusa(self, context, output):
         medusa_q = self.medusa_iiwa.Eval(context)
         self._plant.SetPositions(self._plant_context, self._plant.GetModelInstanceByName("iiwa_medusa"), medusa_q)
-        
+        feedforward_z_force = 0.0,
         medusa_pose = self._plant.GetFrameByName("medusa_finger").CalcPoseInWorld(self._plant_context)
         medusa_rot = medusa_pose.rotation().matrix()
         
         medusa_wrench = self.gamma_manager.medusa_wrench if self.gamma_manager.medusa_wrench is not None else np.zeros(6)
         medusa_wrench = -1 * (block_diag(medusa_rot, medusa_rot) @ self.filter_mat_medusa @ medusa_wrench)
-        print(medusa_wrench)
         output.SetFromVector(medusa_wrench)
 
-def follow_traj_and_torque_gamma(traj_thanos, traj_medusa, gamma_manager: GammaManager, force = 30.0, object_kg = 0.5, endtime = 1e12, scenario_file = "../../config/bimanual_med_hardware_gamma.yaml", directives_file = "../../config/bimanual_med_gamma.yaml"):
+def follow_traj_and_torque_gamma(traj_thanos, traj_medusa, camera_manager: CameraManager, gamma_manager: GammaManager, force = 30.0, object_kg = 0.5, endtime = 1e12, scenario_file = "../../config/bimanual_med_hardware_gamma.yaml", directives_file = "../../config/bimanual_med_gamma.yaml", feedforward_z_force = 0.0, filter_vector_medusa = np.array([0.0, 0.0, 1.0, 1.0, 1.0, 0.0]), filter_vector_thanos = np.array([0.0, 0.0, 1.0, 1.0, 1.0, 0.0])):
     meshcat = StartMeshcat()
     
     root_builder = DiagramBuilder()
@@ -202,12 +203,13 @@ def follow_traj_and_torque_gamma(traj_thanos, traj_medusa, gamma_manager: GammaM
     hardware_block = root_builder.AddSystem(hardware_diagram)
     
     apply_torque_block = root_builder.AddSystem(ApplyForce(hardware_plant, object_kg = object_kg, force=force))
+    # apply_torque_block = root_builder.AddSystem(ApplyForceCompensateGravity(hardware_plant, camera_manager, object_kg = object_kg, applied_force=force, feedforward_z_force=feedforward_z_force))
     torque_demultiplexer_block = root_builder.AddSystem(Demultiplexer(14, 7))
     
     traj_medusa_block = root_builder.AddSystem(TrajectorySource(traj_medusa))
     traj_thanos_block = root_builder.AddSystem(TrajectorySource(traj_thanos))
     
-    reactive_wrench_block = root_builder.AddSystem(ReactiveGamma(hardware_plant, gamma_manager, filter_vector_medusa = np.array([0.0, 0.0, 1.0, 1.0, 1.0, 0.0]), filter_vector_thanos=np.array([0.0, 0.0, 1.0, 1.0, 1.0, 0.0])))
+    reactive_wrench_block = root_builder.AddSystem(ReactiveGamma(hardware_plant, gamma_manager, filter_vector_medusa = filter_vector_medusa, filter_vector_thanos=filter_vector_thanos))
     wrench2torque_block = root_builder.AddSystem(Wrench2Torque(hardware_plant))
     reactive_torque_demultiplexer_block = root_builder.AddSystem(Demultiplexer(14, 7))
     

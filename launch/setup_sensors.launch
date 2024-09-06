@@ -27,15 +27,15 @@
 
     <include file="$(eval find(arg('params_package_name')) + '/launch/continuous_detection.launch')">
         <arg name="node_namespace" value="apriltag_left"/>
-        <arg name="camera_name" value="/panda_1_gelslim_left"/>
+        <arg name="camera_name" value="/panda_1_gelslim_left/undistorted"/>
         <arg name="camera_frame" value="gelslim_left"/>
-        <arg name="image_topic" value="image_undistorted"/>
+        <arg name="image_topic" value="image_raw"/>
     </include>
     <include file="$(eval find(arg('params_package_name')) + '/launch/continuous_detection.launch')">
         <arg name="node_namespace" value="apriltag_right"/>
-        <arg name="camera_name" value="/panda_1_gelslim_right"/>
+        <arg name="camera_name" value="/panda_1_gelslim_right/undistorted"/>
         <arg name="camera_frame" value="gelslim_right"/>
-        <arg name="image_topic" value="image_undistorted"/>
+        <arg name="image_topic" value="image_raw"/>
     </include>
 
     <include file="$(eval find('netft_rdt_driver') + '/launch/netft.launch')">

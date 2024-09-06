@@ -15,13 +15,13 @@ class TagVisualization:
         self.thanos_info_intrinsics = camerainfo2parameters(rospy.wait_for_message("/panda_1_gelslim_right/camera_info", CameraInfo)).intrinsics
         
         self.bridge = CvBridge()
-        self.medusa_cam_sub = rospy.Subscriber("/panda_1_gelslim_left/tag_detections_image", Image, self.medusa_callback, queue_size=1)
-        self.thanos_cam_sub = rospy.Subscriber("/panda_1_gelslim_right/tag_detections_image", Image, self.thanos_callback, queue_size=1)
+        self.medusa_cam_sub = rospy.Subscriber("/panda_1_gelslim_left/undistorted/tag_detections_image", Image, self.medusa_callback, queue_size=1)
+        self.thanos_cam_sub = rospy.Subscriber("/panda_1_gelslim_right/undistorted/tag_detections_image", Image, self.thanos_callback, queue_size=1)
         self.medusa_cam_pub = rospy.Publisher("/panda_1_gelslim_left/pose_image", Image, queue_size=1)
         self.thanos_cam_pub = rospy.Publisher("/panda_1_gelslim_right/pose_image", Image, queue_size=1)
         
-        self.medusa_tag_sub = rospy.Subscriber("/panda_1_gelslim_left/tag_detections", AprilTagDetectionArray, self.medusa_tag_callback, queue_size=1)
-        self.thanos_tag_sub = rospy.Subscriber("/panda_1_gelslim_right/tag_detections", AprilTagDetectionArray, self.thanos_tag_callback, queue_size=1)
+        self.medusa_tag_sub = rospy.Subscriber("/panda_1_gelslim_left/undistorted/tag_detections", AprilTagDetectionArray, self.medusa_tag_callback, queue_size=1)
+        self.thanos_tag_sub = rospy.Subscriber("/panda_1_gelslim_right/undistorted/tag_detections", AprilTagDetectionArray, self.thanos_tag_callback, queue_size=1)
         
         self.thanos_pose_pub = rospy.Publisher("/thanos_se2_pose", Vector3, queue_size=1)
         self.medusa_pose_pub = rospy.Publisher("/medusa_se2_pose", Vector3, queue_size=1)
