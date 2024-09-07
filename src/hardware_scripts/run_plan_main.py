@@ -30,14 +30,23 @@ JOINT_CONFIG0 = [0.11467720408573778, 0.5848234311893432, 0.7214010101336089, -2
 JOINT0_THANOS = np.array([JOINT_CONFIG0[:7]]).flatten()
 JOINT0_MEDUSA = np.array([JOINT_CONFIG0[7:14]]).flatten()
 
-
-def curr_joints():
-    scenario_file = "../../config/bimanual_med_hardware.yaml"
+def curr_des_joints():
+    scenario_file = "../../config/bimanual_med_hardware_gamma.yaml"
     hardware_diagram, hardware_plant = create_hardware_diagram_plant_bimanual(scenario_filepath=scenario_file, meshcat=None, position_only=True)
     context = hardware_diagram.CreateDefaultContext()
     hardware_diagram.ExecuteInitializationEvents(context)
     curr_q_medusa = hardware_diagram.GetOutputPort("iiwa_medusa.position_commanded").Eval(context)
     curr_q_thanos = hardware_diagram.GetOutputPort("iiwa_thanos.position_commanded").Eval(context)
+    curr_q = np.concatenate([curr_q_thanos, curr_q_medusa])
+    return curr_q
+
+def curr_joints():
+    scenario_file = "../../config/bimanual_med_hardware_gamma.yaml"
+    hardware_diagram, hardware_plant = create_hardware_diagram_plant_bimanual(scenario_filepath=scenario_file, meshcat=None, position_only=True)
+    context = hardware_diagram.CreateDefaultContext()
+    hardware_diagram.ExecuteInitializationEvents(context)
+    curr_q_medusa = hardware_diagram.GetOutputPort("iiwa_medusa.position_measured").Eval(context)
+    curr_q_thanos = hardware_diagram.GetOutputPort("iiwa_thanos.position_measured").Eval(context)
     curr_q = np.concatenate([curr_q_thanos, curr_q_medusa])
     return curr_q
 

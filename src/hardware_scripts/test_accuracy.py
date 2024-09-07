@@ -18,14 +18,13 @@ import sys
 sys.path.append('..')
 from load.sim_setup import load_iiwa_setup
 from load.finger_lib import AddSingleFinger
-from run_plan_main import curr_joints
+from run_plan_main import curr_joints, curr_des_joints
 from pydrake.visualization import AddDefaultVisualization
 
-JOINT_CONFIG0 = [1.0702422097407691, 0.79111135304063, 0.039522481390182704, -0.47337899137126993, -0.029476186840982563, 1.8773559661476429, 1.0891375237383238,
-                    -0.6243724965777308, 1.8539706319471008, -1.419344148470764, -0.9229579763233258, 1.7124576303632164, -1.8588769537333005, 1.5895425219089256]
 
 if __name__ == '__main__':
     curr_q = curr_joints()
+    JOINT_CONFIG0 = curr_des_joints()
     
     print("Starting meshcat server...")
     meshcat = StartMeshcat()
@@ -79,7 +78,9 @@ if __name__ == '__main__':
     print("Left Pose Error:", np.linalg.norm(left_pose.translation() - desired_left_pose.translation()))
     print("Right Pose Error:", np.linalg.norm(right_pose.translation() - desired_right_pose.translation()))
     
-    rotdiff = right_pose.rotation().matrix().T @ left_pose.rotation().matrix()
-    print(rotdiff)
-    print(RotationMatrix.MakeYRotation(np.pi).matrix())
+    print("Left Pose Error Vector:", left_pose.translation() - desired_left_pose.translation())
+    print("Right Pose Error Vector:", right_pose.translation() - desired_right_pose.translation())
+    
+    print("Medusa RPY:", right_pose.rotation().ToRollPitchYaw().vector() * 180 / np.pi)
+    print("Thanos RPY:", left_pose.rotation().ToRollPitchYaw().vector() * 180 / np.pi)
     input()

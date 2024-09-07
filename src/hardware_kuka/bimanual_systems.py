@@ -99,7 +99,7 @@ class ApplyForceCompensateGravity(LeafSystem):
             phat = np.array([[0, -z, y],
                              [z, 0, -x],
                              [-y, x, 0]])
-            compensation_torque = phat @ compensation_force
+            compensation_torque = -(phat @ obj_gravity_eeframe_thanos)
             
             wrench = np.concatenate([compensation_torque, compensation_force])
             adder_left_wrench = wrench

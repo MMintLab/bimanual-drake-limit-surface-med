@@ -98,6 +98,21 @@ def create_hardware_diagram_plant_bimanual(scenario_filepath, meshcat = None, po
         hardware_builder.ExportInput(
             fake_station.GetInputPort("iiwa_medusa.feedforward_torque"), "iiwa_medusa_fake.feedforward_torque"
         )
+        
+        hardware_builder.ExportOutput(
+            real_station.GetOutputPort("iiwa_medusa.torque_external"), "iiwa_medusa.torque_external"
+        )
+        hardware_builder.ExportOutput(
+            fake_station.GetOutputPort("iiwa_medusa.torque_external"), "iiwa_medusa_fake.torque_external"
+        )
+        
+        hardware_builder.ExportOutput(
+            real_station.GetOutputPort("iiwa_medusa.torque_commanded"), "iiwa_medusa.torque_commanded"
+        )
+        hardware_builder.ExportOutput(
+            fake_station.GetOutputPort("iiwa_medusa.torque_commanded"), "iiwa_medusa_fake.torque_commanded"
+        )
+        
     hardware_builder.ExportOutput(
         real_station.GetOutputPort("iiwa_medusa.position_commanded"), "iiwa_medusa.position_commanded"
     )
@@ -119,6 +134,21 @@ def create_hardware_diagram_plant_bimanual(scenario_filepath, meshcat = None, po
         hardware_builder.ExportInput(
             fake_station.GetInputPort("iiwa_thanos.feedforward_torque"), "iiwa_thanos_fake.feedforward_torque"
         )
+        
+        hardware_builder.ExportOutput(
+            real_station.GetOutputPort("iiwa_thanos.torque_external"), "iiwa_thanos.torque_external"
+        )
+        hardware_builder.ExportOutput(
+            fake_station.GetOutputPort("iiwa_thanos.torque_external"), "iiwa_thanos_fake.torque_external"
+        )
+        
+        hardware_builder.ExportOutput(
+            real_station.GetOutputPort("iiwa_thanos.torque_commanded"), "iiwa_thanos.torque_commanded"
+        )
+        hardware_builder.ExportOutput(
+            fake_station.GetOutputPort("iiwa_thanos.torque_commanded"), "iiwa_thanos_fake.torque_commanded"
+        )
+        
     hardware_builder.ExportOutput(
         real_station.GetOutputPort("iiwa_thanos.position_commanded"), "iiwa_thanos.position_commanded"
     )
