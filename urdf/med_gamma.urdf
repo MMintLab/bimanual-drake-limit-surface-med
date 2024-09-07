@@ -240,7 +240,7 @@
   <joint name="iiwa_joint_ee" type="fixed">
     <parent link="iiwa_link_7"/>
     <child link="iiwa_link_ee_kuka"/>
-    <origin rpy="3.141592653589793 3.141592653589793 3.141592653589793" xyz="0 0 0.085"/>
+    <origin rpy="3.141592653589793 3.141592653589793 3.141592653589793" xyz="0 0 0.0775"/>
     <axis xyz="0 0 1"/>
   </joint>
   <link name="iiwa_link_ee_kuka">
@@ -248,7 +248,7 @@
   <joint name="tool0_joint" type="fixed">
     <parent link="iiwa_link_7"/>
     <child link="iiwa_link_ee"/>
-    <origin rpy="0 -1.570796326794897 0" xyz="0 0 0.085"/>
+    <origin rpy="0 -1.570796326794897 0" xyz="0 0 0.0775"/>
   </joint>
   <link name="iiwa_link_ee">
     </link>

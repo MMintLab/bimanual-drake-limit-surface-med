@@ -41,11 +41,11 @@ class InteractiveArm:
             MeshcatVisualizerParams(delete_prefix_initialization_event=False),
         )
 
-        AddMultibodyTriad(plant.GetFrameByName("iiwa_link_ee_kuka", plant.GetModelInstanceByName("iiwa_thanos")), scene_graph, length=0.1, radius=0.003)
-        AddMultibodyTriad(plant.GetFrameByName("iiwa_link_ee_kuka", plant.GetModelInstanceByName("iiwa_medusa")), scene_graph, length=0.1, radius=0.003)
+        # AddMultibodyTriad(plant.GetFrameByName("iiwa_link_ee_kuka", plant.GetModelInstanceByName("iiwa_thanos")), scene_graph, length=0.1, radius=0.003)
+        # AddMultibodyTriad(plant.GetFrameByName("iiwa_link_ee_kuka", plant.GetModelInstanceByName("iiwa_medusa")), scene_graph, length=0.1, radius=0.003)
         
-        # AddMultibodyTriad(plant.GetFrameByName("thanos_finger"), scene_graph, length=0.05, radius=0.003)
-        # AddMultibodyTriad(plant.GetFrameByName("medusa_finger"), scene_graph, length=0.05, radius=0.003)
+        AddMultibodyTriad(plant.GetFrameByName("thanos_finger"), scene_graph, length=0.05, radius=0.003)
+        AddMultibodyTriad(plant.GetFrameByName("medusa_finger"), scene_graph, length=0.05, radius=0.003)
         
         diagram = builder.Build()
         context = diagram.CreateDefaultContext()
