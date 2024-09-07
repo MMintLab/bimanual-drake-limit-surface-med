@@ -179,17 +179,17 @@ class ReactiveGamma(LeafSystem):
         thanos_pose = self._plant.GetFrameByName("thanos_finger").CalcPoseInWorld(self._plant_context)
         thanos_rot = thanos_pose.rotation().matrix()
         
-        thanos_wrench = self.gamma_manager.thanos_wrench if self.gamma_manager.thanos_wrench is not None else np.zeros(6)
+        thanos_wrench = self.gamma_manager.get_thanos_wrench(thanos_rot) if self.gamma_manager.thanos_wrench is not None else np.zeros(6)
         thanos_wrench = -1 * (block_diag(thanos_rot, thanos_rot) @ self.filter_mat_thanos @ thanos_wrench)
         output.SetFromVector(thanos_wrench)
     def CalcWrenchMedusa(self, context, output):
         medusa_q = self.medusa_iiwa.Eval(context)
         self._plant.SetPositions(self._plant_context, self._plant.GetModelInstanceByName("iiwa_medusa"), medusa_q)
-        feedforward_z_force = 0.0,
+        
         medusa_pose = self._plant.GetFrameByName("medusa_finger").CalcPoseInWorld(self._plant_context)
         medusa_rot = medusa_pose.rotation().matrix()
         
-        medusa_wrench = self.gamma_manager.medusa_wrench if self.gamma_manager.medusa_wrench is not None else np.zeros(6)
+        medusa_wrench = self.gamma_manager.get_medusa_wrench(medusa_rot) if self.gamma_manager.medusa_wrench is not None else np.zeros(6)
         medusa_wrench = -1 * (block_diag(medusa_rot, medusa_rot) @ self.filter_mat_medusa @ medusa_wrench)
         output.SetFromVector(medusa_wrench)
 

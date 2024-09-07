@@ -36,13 +36,13 @@ class GammaManager:
         if use_compensation:
             medusa_cfg = load_cfg("../config/medusa_gravity_params.yaml")
             thanos_cfg = load_cfg("../config/thanos_gravity_params.yaml")
-            self.medusa_wrench_bias = medusa_cfg['wrench_bias']
-            self.medusa_pos_com = medusa_cfg['pos_fext']
-            self.medusa_force_ext = medusa_cfg['force_ext']
+            self.medusa_wrench_bias = np.array(medusa_cfg['wrench_bias'])
+            self.medusa_pos_com = np.array(medusa_cfg['pos_fext'])
+            self.medusa_force_ext = np.array(medusa_cfg['force_ext'])
             
-            self.thanos_wrench_bias = thanos_cfg['wrench_bias']
-            self.thanos_pos_com = thanos_cfg['pos_fext']
-            self.thanos_force_ext = thanos_cfg['force_ext']
+            self.thanos_wrench_bias = np.array(thanos_cfg['wrench_bias'])
+            self.thanos_pos_com = np.array(thanos_cfg['pos_fext'])
+            self.thanos_force_ext = np.array(thanos_cfg['force_ext'])
         
     def thanos_cb(self, msg: WrenchStamped):
         self.thanos_wrench = self.R_thanos @ wrenchstamped2numpy(msg)
