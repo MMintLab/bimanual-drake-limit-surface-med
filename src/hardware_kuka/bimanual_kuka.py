@@ -114,13 +114,13 @@ class BimanualKuka:
         wrench_thanos = thanos_pose.rotation().matrix() @ np.array([0, 0.0, self.grasp_force])
         wrench_medusa = medusa_pose.rotation().matrix() @ np.array([0, 0.0, self.grasp_force + self.objfeedforward_force])
         
-        wrench_thanos = np.concatenate([np.zeros(3), wrench_thanos])
-        wrench_medusa = np.concatenate([np.zeros(3), wrench_medusa])
+        wrench_thanos = np.concatenate([np.zeros(3), wrench_thanos]) * 0
+        wrench_medusa = np.concatenate([np.zeros(3), wrench_medusa]) * 0
         direct_joint_torque(des_q[:7], des_q[7:], wrench_thanos, wrench_medusa, endtime=5.0, scenario_file=self.scenario_file, directives_file=self.directives_file)
         
     def setup_robot(self):
         self.go_home()
-        self.close_gripper(gap=0.01)
+        self.close_gripper(gap=0.04)
         # self.gamma_manager.zero_sensor()
         
     def rotate_arms(self, rotation, rotate_steps = 30, rotate_time = 30.0):
@@ -162,7 +162,7 @@ if __name__ == "__main__":
     
     # bimanual_kuka.rotate_arms(np.pi/6)
     
-    bimanual_kuka.se2_arms(np.array([0,0.03,np.pi]), medusa=False, se2_time=10.0, force = 0.0, object_kg = 0.0, extra_z_force=0.0, filter_vector_medusa=np.array([1,1,1,1,1,0]) * 0, filter_vector_thanos=np.array([1,1,1,1,1,0]))
+    bimanual_kuka.se2_arms(np.array([0,0.03,np.pi]), medusa=False, se2_time=10.0, force = 0.0, object_kg = 0.0, extra_z_force=0.0, filter_vector_medusa=np.array([1,1,1,1,1,0]), filter_vector_thanos=np.array([1,1,1,1,1,0]) * 0)
     
     # medusa_pose = bimanual_kuka.camera_manager.get_medusa_se2()
     # medusa_pose[2] += np.pi/2

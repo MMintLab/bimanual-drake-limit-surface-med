@@ -120,6 +120,10 @@ def create_hardware_diagram_plant_bimanual(scenario_filepath, meshcat = None, po
         real_station.GetOutputPort("iiwa_medusa.position_measured"), "iiwa_medusa.position_measured"
     )
     
+    hardware_builder.ExportOutput(
+        real_station.GetOutputPort("iiwa_medusa.velocity_estimated"), "iiwa_medusa.velocity_estimated"
+    )
+    
     
     hardware_builder.ExportInput(
         real_station.GetInputPort("iiwa_thanos.position"), "iiwa_thanos.position"
@@ -154,6 +158,10 @@ def create_hardware_diagram_plant_bimanual(scenario_filepath, meshcat = None, po
     )
     hardware_builder.ExportOutput(
         real_station.GetOutputPort("iiwa_thanos.position_measured"), "iiwa_thanos.position_measured"
+    )
+    
+    hardware_builder.ExportOutput(
+        real_station.GetOutputPort("iiwa_thanos.velocity_estimated"), "iiwa_thanos.velocity_estimated"
     )
     
     hardware_diagram = hardware_builder.Build()
