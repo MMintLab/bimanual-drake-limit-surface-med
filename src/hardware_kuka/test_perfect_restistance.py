@@ -76,8 +76,4 @@ if __name__ == '__main__':
     
     input("Press Enter to activate reactive mode.")
     gamma_manager = GammaManager(use_compensation=True)
-    # while not rospy.is_shutdown():
-    #     print("thanos_wrench: ", gamma_manager.get_thanos_wrench())
-    #     print("medusa_wrench: ", gamma_manager.get_medusa_wrench())
-        
     reactive_arm_force(curr_q[:7], curr_q[7:], gamma_manager, endtime = 30.0, scenario_file = scenario_file, directives_file = directives_file)

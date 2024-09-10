@@ -38,8 +38,28 @@ def solveDualIK(plant: MultibodyPlant, left_pose: RigidTransform, right_pose: Ri
         0.0
     )
     
+    # get plant lower limits and upper limits
+    lower_limits = plant.GetPositionLowerLimits()
+    upper_limits = plant.GetPositionUpperLimits()
+    
+    boundary_mod = 4.0
+    boundary_modifier = np.array([boundary_mod, boundary_mod, boundary_mod, boundary_mod, boundary_mod, boundary_mod, 0.0]) * np.pi/180.0
+    
+    left_lower_limit = lower_limits[:7] + boundary_modifier
+    left_upper_limit = upper_limits[:7] - boundary_modifier
+    
+    right_lower_limit = lower_limits[7:] + boundary_modifier
+    right_upper_limit = upper_limits[7:] - boundary_modifier
+    
+    # add joint limits as constraint
+    
+    
+    
     prog = ik.get_mutable_prog()
     q = ik.q()
+    prog.AddBoundingBoxConstraint(left_lower_limit, left_upper_limit, q[:7])
+    prog.AddBoundingBoxConstraint(right_lower_limit, right_upper_limit, q[7:])
+    
     if np.abs(q0).sum() > 1e-4:
         prog.AddQuadraticErrorCost(np.eye(14),q0,q)
     prog.SetInitialGuess(q,q0)

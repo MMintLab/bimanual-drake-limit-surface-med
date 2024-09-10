@@ -83,4 +83,7 @@ if __name__ == '__main__':
     
     print("Medusa RPY:", right_pose.rotation().ToRollPitchYaw().vector() * 180 / np.pi)
     print("Thanos RPY:", left_pose.rotation().ToRollPitchYaw().vector() * 180 / np.pi)
+    
+    print("Desired Medusa RPY:", desired_right_pose.rotation().ToRollPitchYaw().vector() * 180 / np.pi)
+    print("Desired Thanos RPY:", desired_left_pose.rotation().ToRollPitchYaw().vector() * 180 / np.pi)
     input()
