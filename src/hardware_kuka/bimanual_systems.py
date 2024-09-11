@@ -6,6 +6,7 @@ from pydrake.all import (
     RotationMatrix
 )
 from camera import CameraManager
+from gamma import GammaManager
 import numpy as np
 from scipy.linalg import block_diag
 
@@ -129,10 +130,6 @@ class ApplyForceCompensateGravity(LeafSystem):
         
         adder_left_wrench[3:] += self._applied_force
         adder_right_wrench[3:] += self._applied_force
-        
-        print("adder_left_wrench:", adder_left_wrench)
-        print("adder_right_wrench:", adder_right_wrench)
-        print()
         
         thanos_wrench = thanos_pose_rot @ adder_left_wrench
         medusa_wrench = medusa_pose_rot @ adder_right_wrench

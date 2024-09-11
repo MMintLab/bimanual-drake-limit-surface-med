@@ -18,7 +18,8 @@ from pydrake.all import (
     LeafSystem,
     AngleAxis,
     Quaternion,
-    JacobianWrtVariable
+    JacobianWrtVariable,
+    Trajectory
 )
 import numpy as np
 
@@ -445,8 +446,8 @@ class CompensateTranslation(LeafSystem):
         thanos_error = des_thanos_ts - thanos_ts
         medusa_error = des_medusa_ts - medusa_ts
         
-        thanos_ki = 6.0 * 0.0
-        medusa_ki = 6.0 * 0.0
+        thanos_ki = 6.0
+        medusa_ki = 6.0
         
         
         des_medusa_rot = des_medusa_pose.rotation().matrix()
@@ -605,7 +606,37 @@ class CompensateRotation(LeafSystem):
         
         output.SetFromVector(np.concatenate([thanos_torque, medusa_torque]))
 
-def follow_traj_and_torque_gamma_se2(traj_thanos, traj_medusa, gamma_manager: GammaManager, force = 30.0, object_kg = 0.5, endtime = 1e12, scenario_file = "../../config/bimanual_med_hardware_gamma.yaml", directives_file = "../../config/bimanual_med_gamma.yaml", filter_vector_medusa = np.array([0.0, 0.0, 1.0, 1.0, 1.0, 0.0]), filter_vector_thanos = np.array([0.0, 0.0, 1.0, 1.0, 1.0, 0.0]), medusa=False):
+class HackyVectorSource(LeafSystem):
+    '''
+    Take in a trajectory as an argument.
+    Once it is reached (translationally), stop the trajectory.
+    '''
+    def __init__(self, camera_manager: CameraManager, desired_se2: np.ndarray, medusa=False):
+        LeafSystem.__init__(self)
+        self.camera_manager = camera_manager
+        self.medusa = medusa
+        self.desired_se2 = desired_se2
+        
+        self._iiwa_desired_q = self.DeclareVectorInputPort("iiwa_desired_q", 7)
+        self._output_desired_q = self.DeclareVectorOutputPort("iiwa_desired_q", 7, self.CalculateDesiredQ)
+        
+        self.stop = False
+        self.save_q = None
+    def CalculateDesiredQ(self, context, output):
+        desired_q = self._iiwa_desired_q.Eval(context)
+        
+        current_se2 = self.camera_manager.get_medusa_se2() if self.medusa else self.camera_manager.get_thanos_se2()
+        if np.linalg.norm(np.abs(current_se2[:2] - self.desired_se2[:2])) < 0.0025:
+            print("Reached desired position")
+            self.stop = True
+            self.save_q = desired_q
+        if self.stop:
+            output.SetFromVector(self.save_q)
+        else:
+            print("error:", np.linalg.norm(np.abs(current_se2[:2] - self.desired_se2[:2])))
+            output.SetFromVector(desired_q)
+
+def follow_traj_and_torque_gamma_se2(desired_se2, traj_thanos, traj_medusa, camera_manager: CameraManager, gamma_manager: GammaManager, force = 30.0, object_kg = 0.5, endtime = 1e12, scenario_file = "../../config/bimanual_med_hardware_gamma.yaml", directives_file = "../../config/bimanual_med_gamma.yaml", filter_vector_medusa = np.array([0.0, 0.0, 1.0, 1.0, 1.0, 0.0]), filter_vector_thanos = np.array([0.0, 0.0, 1.0, 1.0, 1.0, 0.0]), medusa=False):
     move_medusa = not medusa
     meshcat = StartMeshcat()
     
@@ -691,8 +722,7 @@ def follow_traj_and_torque_gamma_se2(traj_thanos, traj_medusa, gamma_manager: Ga
     simulator.set_target_realtime_rate(1.0)
     simulator.AdvanceTo(endtime + 2.0)
     
-    
-    pass
+
 def follow_traj_and_torque_gamma(traj_thanos, traj_medusa, camera_manager: CameraManager, gamma_manager: GammaManager, force = 30.0, object_kg = 0.5, endtime = 1e12, scenario_file = "../../config/bimanual_med_hardware_gamma.yaml", directives_file = "../../config/bimanual_med_gamma.yaml", filter_vector_medusa = np.array([0.0, 0.0, 1.0, 1.0, 1.0, 0.0]), filter_vector_thanos = np.array([0.0, 0.0, 1.0, 1.0, 1.0, 0.0])):
     meshcat = StartMeshcat()
     
@@ -801,6 +831,19 @@ def inhand_rotate_traj(rotation, rotate_steps, rotate_time, left_pose0: RigidTra
 
 def inhand_se2_traj(left_pose0: RigidTransform, right_pose0: RigidTransform, current_obj2arm_se2 = np.array([0.00,0.0,0]), desired_obj2arm_se2 = np.array([0.00,0.0,0]),medusa = True, se2_time = 10.0):
     left_pose, right_pose = inhand_se2_arms(left_pose0, right_pose0, current_obj2arm_se2, desired_obj2arm_se2, medusa=medusa)
+    
+    # # add extra path for translation
+    # delta_translation = desired_obj2arm_se2[:2] - current_obj2arm_se2[:2]
+    # extra_desired_obj2arm_se2 = desired_obj2arm_se2 + 0.005*np.array([delta_translation[0], delta_translation[1], 0]) / np.linalg.norm(delta_translation) # scale by 1cm
+    
+    # extra_left_pose, extra_right_pose = inhand_se2_arms(left_pose0, right_pose0, current_obj2arm_se2, extra_desired_obj2arm_se2, medusa=medusa)
+    
+    # left_poses = [left_pose0, left_pose, extra_left_pose]
+    # right_poses = [right_pose0, right_pose, extra_right_pose]
+    
+    # speed = np.linalg.norm(delta_translation) / se2_time
+    
+    # ts = [0, se2_time, se2_time + 0.01/speed + 2.0]
     
     left_poses = [left_pose0, left_pose]
     right_poses = [right_pose0, right_pose]
