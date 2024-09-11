@@ -395,6 +395,102 @@ def quat_diff(quat1: Quaternion, quat2: Quaternion):
     error_quaternion = quat2.multiply(quat1.inverse())
     return error_quaternion
 
+class CompensateTranslation(LeafSystem):
+    def __init__(self, plant: MultibodyPlant, move_medusa=False):
+        LeafSystem.__init__(self)
+        self._plant = plant
+        self._plant_context = plant.CreateDefaultContext()
+        
+        self._iiwa_thanos = plant.GetModelInstanceByName("iiwa_thanos")
+        self._iiwa_medusa = plant.GetModelInstanceByName("iiwa_medusa")
+        
+        self._G_thanos = self._plant.GetFrameByName("thanos_finger")
+        self._G_medusa = self._plant.GetFrameByName("medusa_finger")
+        self._W = plant.world_frame()
+        
+        self.thanos_error_integral = np.zeros(3)
+        self.medusa_error_integral = np.zeros(3)
+        
+        self.move_medusa = move_medusa
+        
+        self.thanos_q_port = self.DeclareVectorInputPort("iiwa_thanos", 7)
+        self.medusa_q_port = self.DeclareVectorInputPort("iiwa_medusa", 7)
+        self.traj_thanos_port = self.DeclareVectorInputPort("iiwa_thanos_traj", 7)
+        self.traj_medusa_port = self.DeclareVectorInputPort("iiwa_medusa_traj", 7)
+        self.DeclareVectorOutputPort("torque", 14, self.CalculateTorque)
+    def CalculateTorque(self, context, output):
+        thanos_q = self.thanos_q_port.Eval(context)
+        medusa_q = self.medusa_q_port.Eval(context)
+        des_thanos_q = self.traj_thanos_port.Eval(context)
+        des_medusa_q = self.traj_medusa_port.Eval(context)
+        
+        self._plant.SetPositions(self._plant_context, self._plant.GetModelInstanceByName("iiwa_thanos"), thanos_q)
+        self._plant.SetPositions(self._plant_context, self._plant.GetModelInstanceByName("iiwa_medusa"), medusa_q)
+        
+        thanos_pose = self._plant.GetFrameByName("thanos_finger").CalcPoseInWorld(self._plant_context)
+        medusa_pose = self._plant.GetFrameByName("medusa_finger").CalcPoseInWorld(self._plant_context)
+        
+        thanos_ts = thanos_pose.translation()
+        medusa_ts = medusa_pose.translation()
+        
+        self._plant.SetPositions(self._plant_context, self._plant.GetModelInstanceByName("iiwa_thanos"), des_thanos_q)
+        self._plant.SetPositions(self._plant_context, self._plant.GetModelInstanceByName("iiwa_medusa"), des_medusa_q)
+        
+        des_thanos_pose = self._plant.GetFrameByName("thanos_finger").CalcPoseInWorld(self._plant_context)
+        des_medusa_pose = self._plant.GetFrameByName("medusa_finger").CalcPoseInWorld(self._plant_context)
+        
+        des_thanos_ts = des_thanos_pose.translation()
+        des_medusa_ts = des_medusa_pose.translation()
+        
+        thanos_error = des_thanos_ts - thanos_ts
+        medusa_error = des_medusa_ts - medusa_ts
+        
+        thanos_ki = 6.0 * 0.0
+        medusa_ki = 6.0 * 0.0
+        
+        
+        des_medusa_rot = des_medusa_pose.rotation().matrix()
+        des_thanos_rot = des_thanos_pose.rotation().matrix()
+        
+        rotated_medusa_error = des_medusa_rot.T @ medusa_error
+        rotated_medusa_error[2] = 0.0
+        medusa_error = des_medusa_rot @ rotated_medusa_error
+        
+        rotated_thanos_error = des_thanos_rot.T @ thanos_error
+        rotated_thanos_error[2] = 0.0
+        thanos_error = des_thanos_rot @ rotated_thanos_error
+
+        if self.move_medusa:
+            self.medusa_error_integral += medusa_error
+        else:
+            self.thanos_error_integral += thanos_error
+
+        thanos_signal = thanos_ki * self.thanos_error_integral
+        medusa_signal = medusa_ki * self.medusa_error_integral
+        
+        J_thanos = self._plant.CalcJacobianSpatialVelocity(
+            self._plant_context,
+            JacobianWrtVariable.kQDot,
+            self._G_thanos,
+            [0,0,0],
+            self._W,
+            self._W
+        )[3:,:7]
+        
+        J_medusa = self._plant.CalcJacobianSpatialVelocity(
+            self._plant_context,
+            JacobianWrtVariable.kQDot,
+            self._G_medusa,
+            [0,0,0],
+            self._W,
+            self._W
+        )[3:,7:]
+        
+        thanos_torque = J_thanos.T @ thanos_signal
+        medusa_torque = J_medusa.T @ medusa_signal
+        
+        output.SetFromVector(np.concatenate([thanos_torque, medusa_torque]))
+        
 class CompensateRotation(LeafSystem):
     def __init__(self, plant: MultibodyPlant):
         LeafSystem.__init__(self)
@@ -423,7 +519,7 @@ class CompensateRotation(LeafSystem):
         self.medusa_dq_port = self.DeclareVectorInputPort("iiwa_medusa_dq", 7)
         self.traj_thanos_port = self.DeclareVectorInputPort("iiwa_thanos_traj", 7)
         self.traj_medusa_port = self.DeclareVectorInputPort("iiwa_medusa_traj", 7)
-        self.medusa_compensate_pose_port = self.DeclareVectorOutputPort("torque", 14, self.CalculateTorque)
+        self.DeclareVectorOutputPort("torque", 14, self.CalculateTorque)
     def CalculateTorque(self, context, output):
         thanos_q = self.thanos_pose_port.Eval(context)
         medusa_q = self.medusa_pose_port.Eval(context)
@@ -508,7 +604,95 @@ class CompensateRotation(LeafSystem):
         
         
         output.SetFromVector(np.concatenate([thanos_torque, medusa_torque]))
-        
+
+def follow_traj_and_torque_gamma_se2(traj_thanos, traj_medusa, gamma_manager: GammaManager, force = 30.0, object_kg = 0.5, endtime = 1e12, scenario_file = "../../config/bimanual_med_hardware_gamma.yaml", directives_file = "../../config/bimanual_med_gamma.yaml", filter_vector_medusa = np.array([0.0, 0.0, 1.0, 1.0, 1.0, 0.0]), filter_vector_thanos = np.array([0.0, 0.0, 1.0, 1.0, 1.0, 0.0]), medusa=False):
+    move_medusa = not medusa
+    meshcat = StartMeshcat()
+    
+    root_builder = DiagramBuilder()
+    hardware_diagram, hardware_plant = create_hardware_diagram_plant_bimanual(scenario_filepath=scenario_file, position_only=False, meshcat = meshcat)
+    vis_diagram = create_visual_diagram(directives_filepath=directives_file, meshcat=meshcat, package_file="../../package.xml")
+    
+    hardware_block = root_builder.AddSystem(hardware_diagram)
+    
+    apply_torque_block = root_builder.AddSystem(ApplyForce(hardware_plant, object_kg = object_kg, force=force))
+    # apply_torque_block = root_builder.AddSystem(ApplyForceCompensateGravity(hardware_plant, camera_manager, object_kg = object_kg, applied_force=force, feedforward_z_force=feedforward_z_force))
+    torque_demultiplexer_block = root_builder.AddSystem(Demultiplexer(14, 7))
+    
+    traj_medusa_block = root_builder.AddSystem(TrajectorySource(traj_medusa))
+    traj_thanos_block = root_builder.AddSystem(TrajectorySource(traj_thanos))
+    
+    reactive_wrench_block = root_builder.AddSystem(ReactiveGamma(hardware_plant, gamma_manager, filter_vector_medusa = filter_vector_medusa, filter_vector_thanos=filter_vector_thanos))
+    wrench2torque_block = root_builder.AddSystem(Wrench2Torque(hardware_plant))
+    reactive_torque_demultiplexer_block = root_builder.AddSystem(Demultiplexer(14, 7))
+    
+    adder_torque_thanos_block = root_builder.AddSystem(Adder(4, 7))
+    adder_torque_medusa_block = root_builder.AddSystem(Adder(4, 7))
+    
+    
+    
+    rotation_compensator_block = root_builder.AddSystem(CompensateRotation(hardware_plant))
+    rotation_compensator_demu_block = root_builder.AddSystem(Demultiplexer(14, 7))
+    root_builder.Connect(traj_thanos_block.get_output_port(), rotation_compensator_block.GetInputPort("iiwa_thanos_traj"))
+    root_builder.Connect(traj_medusa_block.get_output_port(), rotation_compensator_block.GetInputPort("iiwa_medusa_traj"))
+    root_builder.Connect(hardware_block.GetOutputPort("iiwa_thanos.position_measured"), rotation_compensator_block.GetInputPort("iiwa_thanos"))
+    root_builder.Connect(hardware_block.GetOutputPort("iiwa_medusa.position_measured"), rotation_compensator_block.GetInputPort("iiwa_medusa"))
+    root_builder.Connect(hardware_block.GetOutputPort("iiwa_thanos.velocity_estimated"), rotation_compensator_block.GetInputPort("iiwa_thanos_dq"))
+    root_builder.Connect(hardware_block.GetOutputPort("iiwa_medusa.velocity_estimated"), rotation_compensator_block.GetInputPort("iiwa_medusa_dq"))
+    root_builder.Connect(rotation_compensator_block.GetOutputPort("torque"), rotation_compensator_demu_block.get_input_port())
+    root_builder.Connect(rotation_compensator_demu_block.get_output_port(0), adder_torque_thanos_block.get_input_port(2))
+    root_builder.Connect(rotation_compensator_demu_block.get_output_port(1), adder_torque_medusa_block.get_input_port(2))
+    
+    translation_compensator_block = root_builder.AddSystem(CompensateTranslation(hardware_plant, move_medusa=move_medusa))
+    translation_compensator_demu_block = root_builder.AddSystem(Demultiplexer(14, 7))
+    root_builder.Connect(traj_thanos_block.get_output_port(), translation_compensator_block.GetInputPort("iiwa_thanos_traj"))
+    root_builder.Connect(traj_medusa_block.get_output_port(), translation_compensator_block.GetInputPort("iiwa_medusa_traj"))
+    root_builder.Connect(hardware_block.GetOutputPort("iiwa_thanos.position_measured"), translation_compensator_block.GetInputPort("iiwa_thanos"))
+    root_builder.Connect(hardware_block.GetOutputPort("iiwa_medusa.position_measured"), translation_compensator_block.GetInputPort("iiwa_medusa"))
+    root_builder.Connect(translation_compensator_block.GetOutputPort("torque"), translation_compensator_demu_block.get_input_port())
+    root_builder.Connect(translation_compensator_demu_block.get_output_port(0), adder_torque_thanos_block.get_input_port(3))
+    root_builder.Connect(translation_compensator_demu_block.get_output_port(1), adder_torque_medusa_block.get_input_port(3))
+    
+    
+    root_builder.Connect(traj_thanos_block.get_output_port(), hardware_block.GetInputPort("iiwa_thanos.position"))
+    root_builder.Connect(traj_thanos_block.get_output_port(), hardware_block.GetInputPort("iiwa_thanos_fake.position"))
+    
+    root_builder.Connect(traj_medusa_block.get_output_port(), hardware_block.GetInputPort("iiwa_medusa.position"))
+    root_builder.Connect(traj_medusa_block.get_output_port(), hardware_block.GetInputPort("iiwa_medusa_fake.position"))
+    
+    
+    # connections for reactive torque
+    root_builder.Connect(hardware_block.GetOutputPort("iiwa_thanos.position_measured"), reactive_wrench_block.GetInputPort("thanos_iiwa"))
+    root_builder.Connect(hardware_block.GetOutputPort("iiwa_medusa.position_measured"), reactive_wrench_block.GetInputPort("medusa_iiwa"))
+    root_builder.Connect(hardware_block.GetOutputPort("iiwa_thanos.position_measured"), wrench2torque_block.GetInputPort("thanos_position"))
+    root_builder.Connect(hardware_block.GetOutputPort("iiwa_medusa.position_measured"), wrench2torque_block.GetInputPort("medusa_position"))
+    root_builder.Connect(reactive_wrench_block.GetOutputPort("wrench_thanos"), wrench2torque_block.GetInputPort("wrench_thanos"))
+    root_builder.Connect(reactive_wrench_block.GetOutputPort("wrench_medusa"), wrench2torque_block.GetInputPort("wrench_medusa"))
+    root_builder.Connect(wrench2torque_block.GetOutputPort("torque"), reactive_torque_demultiplexer_block.get_input_port())
+    
+    # connections for apply torque
+    root_builder.Connect(hardware_block.GetOutputPort("iiwa_thanos.position_measured"), apply_torque_block.GetInputPort("thanos_position"))
+    root_builder.Connect(hardware_block.GetOutputPort("iiwa_medusa.position_measured"), apply_torque_block.GetInputPort("medusa_position"))
+    root_builder.Connect(apply_torque_block.GetOutputPort("torque"), torque_demultiplexer_block.get_input_port())
+    
+    # sum torques
+    root_builder.Connect(torque_demultiplexer_block.get_output_port(0), adder_torque_thanos_block.get_input_port(0))
+    root_builder.Connect(reactive_torque_demultiplexer_block.get_output_port(0), adder_torque_thanos_block.get_input_port(1))
+    
+    root_builder.Connect(torque_demultiplexer_block.get_output_port(1), adder_torque_medusa_block.get_input_port(0))
+    root_builder.Connect(reactive_torque_demultiplexer_block.get_output_port(1), adder_torque_medusa_block.get_input_port(1))
+    
+    # connect to hardware feedforward torque
+    root_builder.Connect(adder_torque_thanos_block.get_output_port(), hardware_block.GetInputPort("iiwa_thanos.feedforward_torque"))
+    root_builder.Connect(adder_torque_medusa_block.get_output_port(), hardware_block.GetInputPort("iiwa_medusa.feedforward_torque"))
+    
+    root_diagram = root_builder.Build()
+    simulator = Simulator(root_diagram)
+    simulator.set_target_realtime_rate(1.0)
+    simulator.AdvanceTo(endtime + 2.0)
+    
+    
+    pass
 def follow_traj_and_torque_gamma(traj_thanos, traj_medusa, camera_manager: CameraManager, gamma_manager: GammaManager, force = 30.0, object_kg = 0.5, endtime = 1e12, scenario_file = "../../config/bimanual_med_hardware_gamma.yaml", directives_file = "../../config/bimanual_med_gamma.yaml", filter_vector_medusa = np.array([0.0, 0.0, 1.0, 1.0, 1.0, 0.0]), filter_vector_thanos = np.array([0.0, 0.0, 1.0, 1.0, 1.0, 0.0])):
     meshcat = StartMeshcat()
     
