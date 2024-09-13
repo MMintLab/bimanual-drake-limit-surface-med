@@ -11,9 +11,8 @@ from pydrake.all import Quaternion
 import numpy as np
 from planning.ik_util import solve_ik_inhand, piecewise_joints, run_full_inhand_og, piecewise_traj
 
-JOINT_CONFIG0 = [0.2629633929806837, 0.6651762161997932, 0.7157398310335504, -1.9204435378870042, 2.1896138680554587, 0.824692923216443, -1.3312588207308196,
-                 -1.442912811620351, 0.7186198643466148, 0.8009948299672707, -1.8944824660290858, 0.6851091343728773, -1.3770352936389032, 0.7591593809638094]
-GAP = 0.075 + 0.26
+JOINT_CONFIG0 = [ 0.29795828,  0.45783705,  0.54191084, -2.00647729,  2.12890974,  0.93841575, -1.12574845,  0.19033173,  1.14214006,  1.63679035,  1.95986071, -2.56029611, -0.2526229,   2.1651646 ]
+GAP = 0.01
 
 if __name__ == '__main__':
     config = MultibodyPlantConfig()
@@ -27,11 +26,11 @@ if __name__ == '__main__':
     builder = DiagramBuilder()
     plant, scene_graph = AddMultibodyPlant(config, builder)
     
-    load_iiwa_setup(plant, scene_graph, package_file='../../package.xml', directive_path="../../config/bimanual_med.yaml")
+    load_iiwa_setup(plant, scene_graph, package_file='../../package.xml', directive_path="../../config/bimanual_med_gamma.yaml")
     plant.Finalize()
     
     plant_arms = MultibodyPlant(1e-3) # time step
-    load_iiwa_setup(plant_arms, package_file='../../package.xml', directive_path="../../config/bimanual_med.yaml")
+    load_iiwa_setup(plant_arms, package_file='../../package.xml', directive_path="../../config/bimanual_med_gamma.yaml")
     plant_arms.Finalize()
     
     
@@ -48,8 +47,8 @@ if __name__ == '__main__':
     plant.SetPositions(plant_context, plant.GetModelInstanceByName("iiwa_medusa"), JOINT_CONFIG0[7:14])
     
     # get pose
-    left_pose0 = plant.EvalBodyPoseInWorld(plant_context, plant.GetBodyByName("iiwa_link_7", plant.GetModelInstanceByName("iiwa_thanos")))
-    right_pose0 = plant.EvalBodyPoseInWorld(plant_context, plant.GetBodyByName("iiwa_link_7", plant.GetModelInstanceByName("iiwa_medusa")))
+    left_pose0 = plant.GetFrameByName("thanos_finger").CalcPoseInWorld(plant_context)
+    right_pose0 = plant.GetFrameByName("medusa_finger").CalcPoseInWorld(plant_context)
     gap = GAP
 
     # make object gap/2 away from left_pose0 in the z direction of left end-effector
@@ -58,10 +57,10 @@ if __name__ == '__main__':
 
     # get panda config 
     
-    desired_obj2left_se2 = np.array([0.00, 0.03, 0.0])
-    desired_obj2right_se2 = np.array([0.00, 0.03, np.pi])
+    desired_obj2left_se2 = np.array([0.0, 0.03, 0.0])
+    desired_obj2right_se2 = np.array([0.00, -0.03, np.pi])
     
-    ts, left_poses, right_poses, obj_poses = run_full_inhand_og(desired_obj2left_se2, desired_obj2right_se2, left_pose0, right_pose0, object_pose0, rotation=np.pi/2, rotate_steps=40, rotate_time=10.0, se2_time=10.0, back_time=10.0, fix_right=False)
+    ts, left_poses, right_poses, obj_poses = run_full_inhand_og(desired_obj2left_se2, desired_obj2right_se2, left_pose0, right_pose0, object_pose0, rotation=70 * np.pi/180, rotate_steps=40, rotate_time=10.0, se2_time=10.0, back_time=10.0, fix_right=False)
     left_piecewise, right_piecewise, _ = piecewise_traj(ts, left_poses, right_poses, obj_poses)
     T = ts[-1]
     

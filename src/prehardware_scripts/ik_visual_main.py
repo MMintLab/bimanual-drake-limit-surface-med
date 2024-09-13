@@ -60,7 +60,7 @@ class InteractiveArm:
         def callback(context, pose):
             q0 = plant.GetPositions(plant_context)
             
-            gap = 0.04
+            gap = 0.01
             modif = -30.0 * np.pi / 180 * 0
             left_pose = RigidTransform(pose.rotation().ToQuaternion(), pose.translation() + pose.rotation().matrix() @ np.array([0,0,-gap/2]))
             right_rot = RotationMatrix(pose.rotation().matrix()) @ RotationMatrix.MakeYRotation(np.pi)

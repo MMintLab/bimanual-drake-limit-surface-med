@@ -669,7 +669,7 @@ def follow_traj_and_torque_gamma_se2(desired_se2, traj_thanos, traj_medusa, came
     
     
     
-    rotation_compensator_block = root_builder.AddSystem(CompensateRotation(hardware_plant))
+    rotation_compensator_block = root_builder.AddSystem(CompensateRotation(hardware_plant, disable_medusa = not move_medusa, disable_thanos = move_medusa))
     rotation_compensator_demu_block = root_builder.AddSystem(Demultiplexer(14, 7))
     root_builder.Connect(traj_thanos_block.get_output_port(), rotation_compensator_block.GetInputPort("iiwa_thanos_traj"))
     root_builder.Connect(traj_medusa_block.get_output_port(), rotation_compensator_block.GetInputPort("iiwa_medusa_traj"))
