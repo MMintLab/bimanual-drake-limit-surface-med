@@ -95,15 +95,18 @@ def inhand_planner(obj2left_se2: np.ndarray, obj2right_se2: np.ndarray, desired_
 
         
         #NOTE: make sure -y frame of object is aligned with gravity
-        c = (dual_limit_surface_params.N_A)**2 / (dual_limit_surface_params.N_B)**2
+        mg = obj_mass * 9.83
+        mg_sin_theta = mg * np.sin(angle * np.pi/180)
+        mg_cos_theta = mg * np.cos(angle * np.pi/180)
+                
         A = dual_limit_surface_params.get_A()
         Ainv = np.linalg.inv(A)
         B = dual_limit_surface_params.get_B()
         mu_B = dual_limit_surface_params.mu_B
-        N_B = dual_limit_surface_params.N_B
+        N_B = dual_limit_surface_params.N_A + mg_cos_theta
+        c = (dual_limit_surface_params.N_A)**2 / (N_B)**2
         
-        mg = obj_mass * 9.83
-        mg_sin_theta = mg * np.sin(angle * np.pi/180)
+
         
         vy = vs[1,t-1]        
         if dual_limit_surface_params.r_A == dual_limit_surface_params.r_B:
@@ -136,8 +139,7 @@ def inhand_planner(obj2left_se2: np.ndarray, obj2right_se2: np.ndarray, desired_
             # v = [vx, vy, omega]
             ineq.append(kv * (vs[0,t-1] + vs[1,t-1])**2 - vs[2,t-1]**2)
             ineq_lb.append(0)
-            ineq_up.append(np.inf)
-            pass
+            ineq_ub.append(np.inf)
             
     
     # code to reshape to optimization
@@ -175,7 +177,7 @@ if __name__ == '__main__':
     desired_obj2right_se2 = np.array([0.1, 0.1, 0])
     
     dls_params = DualLimitSurfaceParams(mu_A = 2.0, r_A = 0.04, N_A = 15.0, mu_B = 2.0, r_B = 0.04, N_B = 20.0)
-    obj2left, obj2right, vs = inhand_planner(obj2left_se2, obj2right_se2, desired_obj2left_se2, desired_obj2right_se2, dls_params, steps = 4)
+    obj2left, obj2right, vs = inhand_planner(obj2left_se2, obj2right_se2, desired_obj2left_se2, desired_obj2right_se2, dls_params, steps = 4, angle = 80 * np.pi/180)
     
     # plot (2,1) subplots, draw xy and yaw vector
     fig, axs = plt.subplots(2,1)
