@@ -63,17 +63,19 @@ def inhand_planner(obj2left_se2: np.ndarray, obj2right_se2: np.ndarray, desired_
         # ensure obj2left and obj2right are in circle
         # \| qleft[:2] \|^2 <= palm_radius^2
         # qleft.T @ diag(1,1,0) @ qleft - palm_radius**2 <= 0
-        prog.AddQuadraticAsRotatedLorentzConeConstraint(2*np.diag([1,1,0]), np.zeros(3), palm_radius**2, qlefts[:,t])
+        prog.AddQuadraticAsRotatedLorentzConeConstraint(2*np.diag([1,1,0]), np.zeros(3), -palm_radius**2, qlefts[:,t])
         
         # \| qright[:2] \|^2 <= palm_radius^2
-        prog.AddQuadraticAsRotatedLorentzConeConstraint(2*np.diag([1,1,0]), np.zeros(3), palm_radius**2, qrights[:,t])
+        prog.AddQuadraticAsRotatedLorentzConeConstraint(2*np.diag([1,1,0]), np.zeros(3), -palm_radius**2, qrights[:,t])
 
         mg = obj_mass * 9.83
         mg_sin_theta = mg * np.sin(angle * np.pi/180)
         mg_cos_theta = mg * np.cos(angle * np.pi/180)
                 
         A = dual_limit_surface_params.get_A()
+        Asqrt = dual_limit_surface_params.get_Asqrt()
         Ainv = np.linalg.inv(A)
+        Ainvsqrt = np.linalg.inv(Asqrt)
         B = dual_limit_surface_params.get_B()
         mu_B = dual_limit_surface_params.mu_B
         N_B = dual_limit_surface_params.N_A + mg_cos_theta
@@ -92,17 +94,26 @@ def inhand_planner(obj2left_se2: np.ndarray, obj2right_se2: np.ndarray, desired_
                 prog.AddConstraint( const_sqrt_v_Ainv_v * sqrt_v_Ainv_v - c_g_v >= 0 )
         else:
             sqrt_v_Ainv_v = np.sqrt( vs[:,t-1].T @ Ainv @ vs[:,t-1] )
+            Ainvsqrt_v = Ainvsqrt @ vs[:,t-1]
             gf_B_gf = (mg_sin_theta**2)/((mu_B*N_B)**2)
             const_v_Ainv_B_gf = 2.0/gf_B_gf
             v_Ainv_B_gf = mg_sin_theta * vy * c
             
-            prog.AddConstraint(sqrt_v_Ainv_v - const_v_Ainv_B_gf * v_Ainv_B_gf <= 0)
+            cone_var = np.concatenate((np.array([(const_v_Ainv_B_gf * v_Ainv_B_gf)]), Ainvsqrt_v))
+            
+            prog.AddLorentzConeConstraint(cone_var)
+            # prog.AddConstraint(sqrt_v_Ainv_v - const_v_Ainv_B_gf * v_Ainv_B_gf <= 0)
+            
             prog.AddConstraint(kv * (vs[0,t-1] + vs[1,t-1])**2 - vs[2,t-1]**2 >= 0)
         
         # make sure qleft and qright yaw are between -pi and pi
         prog.AddBoundingBoxConstraint(-np.pi, np.pi, qlefts[2,t])
         prog.AddBoundingBoxConstraint(-np.pi, np.pi, qrights[2,t])
-        
+    
+    #add terminal cost
+    prog.AddQuadraticCost(1e6 * Qmatvec @ (desired_obj2left_se2 - qlefts[:,-1])**2)
+    prog.AddQuadraticCost(1e6 * Qmatvec @ (desired_obj2right_se2 - qrights[:,-1])**2)
+    
     print(GetProgramType(prog))
     print([solver.name() for solver in GetAvailableSolvers(GetProgramType(prog))])
     snopt_solver = SnoptSolver()
@@ -120,16 +131,21 @@ def inhand_planner(obj2left_se2: np.ndarray, obj2right_se2: np.ndarray, desired_
 
 if __name__ == '__main__':
     import matplotlib.pyplot as plt
+    
     palm_radius = 0.04
     obj2left_se2  = np.array([0,0,np.pi])
     obj2right_se2 = np.array([0,0,0])
     
-    desired_obj2left_se2  = np.array([0.02, 0.02, np.pi])
-    desired_obj2right_se2 = np.array([0.02, 0.02, 0])
+    desired_obj2left_se2  = np.array([-0.00, -0.03, np.pi])
+    desired_obj2right_se2 = np.array([-0.00, -0.03, np.pi/6])
     
-    dls_params = DualLimitSurfaceParams(mu_A = 2.0, r_A = 0.04, N_A = 15.0, mu_B = 2.0, r_B = 0.04, N_B = 20.0)
-    obj2left, obj2right, vs = inhand_planner(obj2left_se2, obj2right_se2, desired_obj2left_se2, desired_obj2right_se2, dls_params, steps = 4, angle = 80 * np.pi/180)
+    dls_params = DualLimitSurfaceParams(mu_A = 2.0, r_A = 0.04, N_A = 15.0, mu_B = 2.0, r_B = 0.03, N_B = 20.0)
+    obj2left, obj2right, vs = inhand_planner(obj2left_se2, obj2right_se2, desired_obj2left_se2, desired_obj2right_se2, dls_params, steps = 5, angle = 60 * np.pi/180, palm_radius=palm_radius, kv = 20.0)
     
+    print(np.round(desired_obj2left_se2 - obj2left[:,-1],4))
+    print(np.round(desired_obj2right_se2 - obj2right[:,-1],4))
+    
+    # plot (2,1) subplots, draw xy and yaw vector
     fig, axs = plt.subplots(2,1)
     axs[0].plot(obj2left[0,:], obj2left[1,:], 'r')
     axs[0].quiver(obj2left[0,:], obj2left[1,:], np.cos(obj2left[2,:]), np.sin(obj2left[2,:]), color='b', scale=20)
