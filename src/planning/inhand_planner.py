@@ -17,10 +17,14 @@ class DualLimitSurfaceParams:
         self.c = 0.6
     def get_A(self):
         return np.diag([1/(self.mu_A*self.N_A)**2, 1/(self.mu_A*self.N_A)**2, 1/(self.mu_A*self.N_A*self.c*self.r_A)**2])
+    def get_Asqrt(self):
+        return np.diag([1/(self.mu_A*self.N_A), 1/(self.mu_A*self.N_A), 1/(self.mu_A*self.N_A*self.c*self.r_A)])
     def get_B(self):
         return np.diag([1/(self.mu_B*self.N_B)**2, 1/(self.mu_B*self.N_B)**2, 1/(self.mu_B*self.N_B*self.c*self.r_B)**2])
+    def get_Bsqrt(self):
+        return np.diag([1/(self.mu_B*self.N_B), 1/(self.mu_B*self.N_B), 1/(self.mu_B*self.N_B*self.c*self.r_B)])
 
-def inhand_planner(obj2left_se2: np.ndarray, obj2right_se2: np.ndarray, desired_obj2left_se2: np.ndarray, desired_obj2right_se2: np.ndarray, dual_limit_surface_params: DualLimitSurfaceParams, obj_mass = 0.5, angle = 30 * np.pi/180, palm_radius = 0.04, steps = 10):
+def inhand_planner(obj2left_se2: np.ndarray, obj2right_se2: np.ndarray, desired_obj2left_se2: np.ndarray, desired_obj2right_se2: np.ndarray, dual_limit_surface_params: DualLimitSurfaceParams, obj_mass = 0.5, angle = 30 * np.pi/180, palm_radius = 0.04, steps = 10, kv = 0.5):
     # assert mu_A == mu_B
     assert dual_limit_surface_params.mu_A == dual_limit_surface_params.mu_B
     obj2world_se2 = np.array([0,0,0]) # +y is towards ground
@@ -88,8 +92,55 @@ def inhand_planner(obj2left_se2: np.ndarray, obj2right_se2: np.ndarray, desired_
         ineq.append(cs.sum1(qrights[:2,t]**2) - palm_radius**2)
         ineq_lb.append(-np.inf)
         ineq_ub.append(0)
+
+        
+        #NOTE: make sure -y frame of object is aligned with gravity
+        c = (dual_limit_surface_params.N_A)**2 / (dual_limit_surface_params.N_B)**2
+        A = dual_limit_surface_params.get_A()
+        Ainv = np.linalg.inv(A)
+        B = dual_limit_surface_params.get_B()
+        mu_B = dual_limit_surface_params.mu_B
+        N_B = dual_limit_surface_params.N_B
+        
+        mg = obj_mass * 9.83
+        mg_sin_theta = mg * np.sin(angle * np.pi/180)
+        
+        vy = vs[1,t-1]        
+        if dual_limit_surface_params.r_A == dual_limit_surface_params.r_B:
+            # run simple constraint for v if radii are equal
+            
+            const_sqrt_v_Ainv_v = (c - 1 + (mg_sin_theta**2)/((mu_B*N_B)**2))
+            sqrt_v_Ainv_v = cs.sqrt(cs.sum2(cs.sum1( Ainv @ vs[:,t-1])))
+            c_g_v = 2 * c * mg_sin_theta * vy
+            
+            # expression > 0
+            ineq.append(const_sqrt_v_Ainv_v * sqrt_v_Ainv_v - c_g_v)
+            ineq_lb.append(0)
+            ineq_ub.append(np.inf)
+        else:
+            # run complex constraint for v if radii are not equal
+            
+            #first inequality is equivalent to the simple case one
+            
+            sqrt_v_Ainv_v = cs.sqrt(cs.sum2(cs.sum1( Ainv @ vs[:,t-1])))
+            gf_B_gf = (mg_sin_theta**2)/((mu_B*N_B)**2)
+            const_v_Ainv_B_gf = 2.0/gf_B_gf
+            v_Ainv_B_gf = mg_sin_theta * vy * c
+            
+            #expr < 0
+            ineq.append(sqrt_v_Ainv_v - const_v_Ainv_B_gf * v_Ainv_B_gf)
+            ineq_lb.append(-np.inf)
+            ineq_ub.append(0)
+            
+            #second inequality is the Asymmetric Dual Limit Surface constraint kv * (vx + vy)^2 - omega^2 >= 0
+            # v = [vx, vy, omega]
+            ineq.append(kv * (vs[0,t-1] + vs[1,t-1])**2 - vs[2,t-1]**2)
+            ineq_lb.append(0)
+            ineq_up.append(np.inf)
+            pass
+            
     
-    # code to reshape code for optimization
+    # code to reshape to optimization
     opt_x = cs.vertcat(qlefts.reshape((-1,1)), qrights.reshape((-1,1)), qobjs.reshape((-1,1)), vs.reshape((-1,1)))
     qL_lb = [-np.inf, -np.inf, -np.pi]*steps
     qL_ub = [np.inf, np.inf, np.pi]*steps
@@ -109,7 +160,6 @@ def inhand_planner(obj2left_se2: np.ndarray, obj2right_se2: np.ndarray, desired_
     solution_x = np.array(solution['x'])
     obj2left = solution_x[:3*steps].reshape((-1,3)).T
     obj2right = solution_x[3*steps:6*steps].reshape((-1,3)).T
-    obj2world = solution_x[6*steps:9*steps].reshape((-1,3)).T
     vs = solution_x[9*steps:].reshape((-1,3)).T
     
     return obj2left, obj2right, vs
@@ -118,13 +168,13 @@ if __name__ == '__main__':
     import matplotlib.pyplot as plt
     
     palm_radius = 0.04
-    obj2left_se2  = np.zeros(3)
-    obj2right_se2 = np.zeros(3)
+    obj2left_se2  = np.array([0,0,np.pi])
+    obj2right_se2 = np.array([0,0,0])
     
-    desired_obj2left_se2  = np.array([0.1, 0.1, 0])
+    desired_obj2left_se2  = np.array([0.1, 0.1, np.pi])
     desired_obj2right_se2 = np.array([0.1, 0.1, 0])
     
-    dls_params = DualLimitSurfaceParams(1, 0.1, 0.1, 1, 0.1, 0.1)
+    dls_params = DualLimitSurfaceParams(mu_A = 2.0, r_A = 0.04, N_A = 15.0, mu_B = 2.0, r_B = 0.04, N_B = 20.0)
     obj2left, obj2right, vs = inhand_planner(obj2left_se2, obj2right_se2, desired_obj2left_se2, desired_obj2right_se2, dls_params, steps = 4)
     
     # plot (2,1) subplots, draw xy and yaw vector
