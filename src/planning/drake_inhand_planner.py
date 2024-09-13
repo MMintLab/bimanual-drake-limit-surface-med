@@ -85,7 +85,11 @@ def inhand_planner(obj2left_se2: np.ndarray, obj2right_se2: np.ndarray, desired_
             sqrt_v_Ainv_v = np.sqrt( vs[:,t-1].T @ Ainv @ vs[:,t-1] )
             c_g_v = 2 * c * mg_sin_theta * vy
             
-            # prog.AddConstraint( const_sqrt_v_Ainv_v * sqrt_v_Ainv_v - c_g_v >= 0 )
+            print("constant:", const_sqrt_v_Ainv_v)
+            if const_sqrt_v_Ainv_v < 0:
+                prog.AddLinearConstraint(vy >= 0)
+            else:
+                prog.AddConstraint( const_sqrt_v_Ainv_v * sqrt_v_Ainv_v - c_g_v >= 0 )
         else:
             sqrt_v_Ainv_v = np.sqrt( vs[:,t-1].T @ Ainv @ vs[:,t-1] )
             gf_B_gf = (mg_sin_theta**2)/((mu_B*N_B)**2)

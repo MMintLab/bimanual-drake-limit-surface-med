@@ -35,8 +35,11 @@ def inhand_planner(obj2left_se2: np.ndarray, obj2right_se2: np.ndarray, desired_
     vs      = cs.SX.sym('v', 3, steps-1)
     
     
-    Qmatvec = np.array([100, 100, 100])
+    Qmatvec = np.ones(3) * 1e2
     cost = cs.sum2(cs.sum1(Qmatvec * (desired_obj2left_se2 - qlefts)**2)) + cs.sum2(cs.sum1(Qmatvec * (desired_obj2right_se2 - qrights)**2))
+    
+    # add terminal cost
+    cost += 1e6*cs.sum1(Qmatvec * (desired_obj2left_se2 - qlefts[:,-1])**2) + 1e6*cs.sum1(Qmatvec * (desired_obj2right_se2 - qrights[:,-1])**2)
     
     ineq    = []
     ineq_lb = []
@@ -117,9 +120,15 @@ def inhand_planner(obj2left_se2: np.ndarray, obj2right_se2: np.ndarray, desired_
             c_g_v = 2 * c * mg_sin_theta * vy
             
             # expression > 0
-            ineq.append(const_sqrt_v_Ainv_v * sqrt_v_Ainv_v - c_g_v)
-            ineq_lb.append(0)
-            ineq_ub.append(np.inf)
+            print(const_sqrt_v_Ainv_v)
+            if const_sqrt_v_Ainv_v < 0:
+                ineq.append(vy)
+                ineq_lb.append(0)
+                ineq_ub.append(np.inf)
+            else:
+                ineq.append(const_sqrt_v_Ainv_v * sqrt_v_Ainv_v - c_g_v)
+                ineq_lb.append(0)
+                ineq_ub.append(np.inf)
         else:
             # run complex constraint for v if radii are not equal
             
@@ -173,11 +182,14 @@ if __name__ == '__main__':
     obj2left_se2  = np.array([0,0,np.pi])
     obj2right_se2 = np.array([0,0,0])
     
-    desired_obj2left_se2  = np.array([0.1, 0.1, np.pi])
-    desired_obj2right_se2 = np.array([0.1, 0.1, 0])
+    desired_obj2left_se2  = np.array([-0.00, -0.03, np.pi/2])
+    desired_obj2right_se2 = np.array([-0.00, -0.03, np.pi/2])
     
     dls_params = DualLimitSurfaceParams(mu_A = 2.0, r_A = 0.04, N_A = 15.0, mu_B = 2.0, r_B = 0.04, N_B = 20.0)
-    obj2left, obj2right, vs = inhand_planner(obj2left_se2, obj2right_se2, desired_obj2left_se2, desired_obj2right_se2, dls_params, steps = 4, angle = 80 * np.pi/180)
+    obj2left, obj2right, vs = inhand_planner(obj2left_se2, obj2right_se2, desired_obj2left_se2, desired_obj2right_se2, dls_params, steps = 10, angle = 90 * np.pi/180, palm_radius=palm_radius)
+    
+    print(np.round(desired_obj2left_se2 - obj2left[:,-1],4))
+    print(np.round(desired_obj2right_se2 - obj2right[:,-1],4))
     
     # plot (2,1) subplots, draw xy and yaw vector
     fig, axs = plt.subplots(2,1)
