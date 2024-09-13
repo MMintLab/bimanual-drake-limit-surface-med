@@ -6,7 +6,8 @@ from pydrake.all import (
     MultibodyPlant,
     RotationMatrix,
     RigidTransform,
-    JacobianWrtVariable
+    JacobianWrtVariable,
+    PiecewisePolynomial
 )
 import numpy as np
 
@@ -30,10 +31,11 @@ from movement_lib import (
     goto_joints_torque,
     follow_traj_and_torque_gamma_se2
 )
+from planning.ik_util import solveDualIK
 from scipy.linalg import block_diag
 
 class BimanualKuka:
-    def __init__(self, scenario_file="../../config/bimanual_med_hardware_gamma.yaml", directives_file="../../config/bimanual_med_gamma.yaml", grasp_force = 15.0, obj_feedforward=5.0):
+    def __init__(self, scenario_file="../../config/bimanual_med_hardware_gamma.yaml", directives_file="../../config/bimanual_med_gamma.yaml", grasp_force = 35.0, obj_feedforward=5.0):
         # object pose SE2 in thanos/medusa end-effector frame
         self.camera_manager = CameraManager()
         
@@ -53,6 +55,11 @@ class BimanualKuka:
         self.home_q = [1.0540217588325416, 0.7809724707093576, 0.09313438428576386, -0.5122596993658023, -0.06815758341558487, 1.849912055108764, 1.1014584994181864, -0.633812090276105, 2.049101710112114, 1.2905853609868987, 0.9356053209918564, -1.0266903347613374, -1.6463252209521346, 1.521753948710382]
         self.angle = 0.0
         
+        plant_context = self._plant.CreateDefaultContext()
+        self._plant.SetPositions(plant_context, self._plant.GetModelInstanceByName("iiwa_thanos"), self.home_q[:7])
+        thanos_pose = self._plant.GetFrameByName("thanos_finger").CalcPoseInWorld(plant_context)
+        self.reset_y = thanos_pose.translation()[1]
+        
         # self.home_q = [0.616143429570238, 1.6962545441640784, 1.1110463972964275, -1.013969579064842, 1.7121774471629296, 2.024581932313422, -1.6266687105457462, -0.8812609725550722, 0.9981531684014578, 1.7713755144493566, 0.3836090390795142, 1.1602213959287504, -2.024581932313422, -1.3021454001891604]
         # self.angle = 180.0 * np.pi / 180.0
         
@@ -64,7 +71,6 @@ class BimanualKuka:
         self.medusa_stiffness = np.ones(7) * 1000.0
         
         self.object_feedforward_force = obj_feedforward
-        
     
     def get_torque_commanded(self):
         curr_torque = curr_torque_commanded(scenario_file=self.scenario_file)
@@ -204,11 +210,11 @@ class BimanualKuka:
         
         self.des_q = des_q
         
-    def setup_robot(self):
+    def setup_robot(self, gap = 0.015):
         self.go_home()
-        self.close_gripper(gap=0.015)
+        self.close_gripper(gap=gap)
         
-    def rotate_arms(self, rotation, rotate_steps = 30, rotate_time = 30.0):
+    def rotate_arms(self, rotation, rotate_steps = 30, rotate_time = 30.0, grasp_force = 15.0):
         curr_des_q = self.des_q
         thanos_pose, medusa_pose = self.get_poses(curr_des_q)
         current_obj2medusa_se2 = self.camera_manager.get_medusa_se2()
@@ -227,14 +233,15 @@ class BimanualKuka:
         des_q = np.concatenate([des_thanos_q, des_medusa_q])
         
         if self.angle < np.pi/2:
-            wrench_thanos = np.concatenate([np.zeros(3), np.array([0, 0.0, self.grasp_force])])
-            wrench_medusa = np.concatenate([np.zeros(3), np.array([0, 0.0, self.grasp_force + self.object_feedforward_force])])
+            wrench_thanos = np.concatenate([np.zeros(3), np.array([0, 0.0, 0])])
+            wrench_medusa = np.concatenate([np.zeros(3), np.array([0, 0.0, grasp_force])])
         else:
-            wrench_thanos = np.concatenate([np.zeros(3), np.array([0, 0.0, self.grasp_force + self.object_feedforward_force])])
-            wrench_medusa = np.concatenate([np.zeros(3), np.array([0, 0.0, self.grasp_force])])
+            wrench_thanos = np.concatenate([np.zeros(3), np.array([0, 0.0, grasp_force])])
+            wrench_medusa = np.concatenate([np.zeros(3), np.array([0, 0.0, 0])])
         
         goto_joints_torque(des_q[:7], des_q[7:], wrench_thanos, wrench_medusa, endtime=5.0, scenario_file=self.scenario_file, directives_file=self.directives_file)
-        
+
+        print("Sensing before se2")        
         gamma_wrench_thanos, gamma_wrench_medusa = self.get_gamma_wrench()
         print("gamma_wrench_thanos: ", gamma_wrench_thanos)
         print("gamma_wrench_medusa: ", gamma_wrench_medusa)
@@ -277,18 +284,80 @@ class BimanualKuka:
         des_medusa_q = medusa_piecewise.value(T).flatten()
         des_q = np.concatenate([des_thanos_q, des_medusa_q])
         self.des_q = des_q
+    def move_back(self, endtime = 10.0):
+        curr_q = curr_joints(scenario_file=self.scenario_file)
+        current_thanos_q = curr_q[:7]
+        current_medusa_q = curr_q[7:]
+        thanos_pose, medusa_pose = self.get_poses(curr_q)
+        current_obj2medusa_se2 = self.camera_manager.get_medusa_se2()
+        
+        z_offset = 0.005
+        thanos2medusa = medusa_pose.inverse() @ thanos_pose
+        current_obj2medusa = RigidTransform(RotationMatrix.MakeZRotation(current_obj2medusa_se2[2]), np.array([current_obj2medusa_se2[0], current_obj2medusa_se2[1], z_offset]))
+        current_obj2world = medusa_pose @ current_obj2medusa
+        
+        # move back to original x
+        desired_obj2world = RigidTransform(current_obj2world.rotation(), np.array([current_obj2world.translation()[0], self.reset_y, current_obj2world.translation()[2]]))
+        desired_medusa2world = desired_obj2world @ current_obj2medusa.inverse()
+        desired_thanos2world = desired_medusa2world @ thanos2medusa
+        
+        desired_q, _ = solveDualIK(self._plant, desired_thanos2world, desired_medusa2world, "thanos_finger", "medusa_finger", curr_q)
+        desired_thanos_q = desired_q[:7]
+        desired_medusa_q = desired_q[7:]
+        
+        print("thanos difference:", desired_thanos2world.translation() - thanos_pose.translation())
+        print("medusa difference:", desired_medusa2world.translation() - medusa_pose.translation())
+        
+        ts = [0, endtime]
+        thanos_qs = np.array([current_thanos_q, desired_thanos_q]).T
+        medusa_qs = np.array([current_medusa_q, desired_medusa_q]).T
+        thanos_q_traj = PiecewisePolynomial.FirstOrderHold(ts, thanos_qs)
+        medusa_q_traj = PiecewisePolynomial.FirstOrderHold(ts, medusa_qs)
+        
+        input("Press Enter to move back")
+        filter_vector_medusa = np.array([0,0,1,1,1,0])
+        filter_vector_thanos = np.array([0,0,1,1,1,0])
+        # follow_trajectory_apply_push(thanos_piecewise, medusa_piecewise, force=30.0, camera_manager=self.camera_manager, object_kg = 0.5, endtime = T, scenario_file=self.scenario_file, directives_file=self.directives_file)
+        follow_traj_and_torque_gamma(thanos_q_traj, medusa_q_traj, self.camera_manager, self.gamma_manager, force=30.0, object_kg=0.5, endtime = endtime, scenario_file=self.scenario_file, directives_file=self.directives_file,
+                                    filter_vector_medusa=filter_vector_medusa, filter_vector_thanos=filter_vector_thanos)
+        
+        des_q = np.concatenate([desired_thanos_q, desired_medusa_q])
+        self.des_q = des_q
+        
 if __name__ == "__main__":
     rospy.init_node("bimanual_kuka")
-    bimanual_kuka = BimanualKuka(scenario_file="../../config/bimanual_med_hardware_gamma.yaml", directives_file="../../config/bimanual_med_gamma.yaml")
+    bimanual_kuka = BimanualKuka(scenario_file="../../config/bimanual_med_hardware_gamma.yaml", directives_file="../../config/bimanual_med_gamma.yaml", grasp_force=20.0)
     rospy.sleep(0.1)
-    bimanual_kuka.setup_robot()
+    bimanual_kuka.setup_robot(gap=0.015)
+    
+    # bimanual_kuka.se2_arms(np.array([0.0,0.03,np.pi]), medusa=False, se2_time=20.0, force = 0.0, object_kg = 1.5, filter_vector_medusa=np.array([1,1,1,1,1,0]), filter_vector_thanos=np.array([1,1,1,1,1,1]))
+    # bimanual_kuka.move_back(endtime=10.0)
+
+    # input("Press Enter to rotate arms")
+    # bimanual_kuka.rotate_arms(45 * np.pi/180)
+    # input("Press Enter to move arms")
+    # bimanual_kuka.se2_arms(np.array([0.0,0.03,np.pi]), medusa=False, se2_time=20.0, force = 0.0, object_kg = 3.0, filter_vector_medusa=np.array([1,1,1,1,1,0]), filter_vector_thanos=np.array([1,1,1,1,1,1]))
+    # input("Press Enter to rotate arms")
+    # bimanual_kuka.rotate_arms(-45 * np.pi/180)
+
+    bimanual_kuka.rotate_arms(20 * np.pi/180, rotate_time = 20)
+    bimanual_kuka.se2_arms(np.array([0.0,0.03,np.pi]), medusa=False, se2_time=20.0, force = 0.0, object_kg = 2.0, filter_vector_medusa=np.array([1,1,1,1,1,0]), filter_vector_thanos=np.array([1,1,1,1,1,1]))
+    bimanual_kuka.rotate_arms(70 * np.pi/180, rotate_time = 20)
+    bimanual_kuka.move_back(endtime=20.0)
+    bimanual_kuka.rotate_arms(-90 * np.pi/180, rotate_time = 20)
+
     
     # real test
-    bimanual_kuka.rotate_arms(80 * np.pi/180)
-    bimanual_kuka.se2_arms(np.array([0.0,0.03,-np.pi/2]), medusa=False, se2_time=20.0, force = 0.0, object_kg = 1.5, filter_vector_medusa=np.array([1,1,1,1,1,0]), filter_vector_thanos=np.array([1,1,1,1,1,1]))
-    bimanual_kuka.rotate_arms(20 * np.pi/180)
-    bimanual_kuka.se2_arms(np.array([0.0,0.0,np.pi/2]), medusa=True, se2_time=20.0, force = 0.0, object_kg = 1.5, filter_vector_medusa=np.array([1,1,1,1,1,1]), filter_vector_thanos=np.array([1,1,1,1,1,0]))
-    bimanual_kuka.rotate_arms(-100 * np.pi/180)
+    # run 2.5 for even
+    # run 3.5 for uneven
+    
+    # bimanual_kuka.rotate_arms(20 * np.pi/180, rotate_time = 20)
+    # bimanual_kuka.se2_arms(np.array([0.03,0.0,np.pi]), medusa=False, se2_time=20.0, force = 0.0, object_kg = 2.0, filter_vector_medusa=np.array([1,1,1,1,1,0]), filter_vector_thanos=np.array([1,1,1,1,1,1]))
+    
+    # bimanual_kuka.rotate_arms(140 * np.pi/180, rotate_time = 30)
+    # bimanual_kuka.se2_arms(np.array([0.00,-0.02,0.0]), medusa=True, se2_time=20.0, force = 0.0, object_kg = 2.0, filter_vector_medusa=np.array([1,1,1,1,1,1]), filter_vector_thanos=np.array([1,1,1,1,1,0]))
+    # bimanual_kuka.rotate_arms(-160 * np.pi/180, rotate_time = 30)
     
     print("Finished demo")
     rospy.spin()
+    

@@ -493,8 +493,10 @@ class CompensateTranslation(LeafSystem):
         output.SetFromVector(np.concatenate([thanos_torque, medusa_torque]))
         
 class CompensateRotation(LeafSystem):
-    def __init__(self, plant: MultibodyPlant):
+    def __init__(self, plant: MultibodyPlant, disable_thanos = False, disable_medusa = False):
         LeafSystem.__init__(self)
+        self.disable_thanos = disable_thanos
+        self.disable_medusa = disable_medusa
         self._plant = plant
         self._plant_context = plant.CreateDefaultContext()
         
@@ -564,6 +566,11 @@ class CompensateRotation(LeafSystem):
         
         thanos_ki = 0.3 * 180 / np.pi
         medusa_ki = 0.3 * 180 / np.pi
+        
+        if self.disable_thanos:
+            thanos_ki = 0.0
+        if self.disable_medusa:
+            medusa_ki = 0.0
         
         thanos_kd = 0.0 * 180 / np.pi
         medusa_kd = 0.0 * 180 / np.pi

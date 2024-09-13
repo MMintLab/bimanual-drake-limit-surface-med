@@ -5,6 +5,12 @@ from bimanual_kuka import BimanualKuka
 import numpy as np
 # ASSUME: start with medusa on bottom at 0 degrees and thanos at 180 degrees
 
+PATH_GOALS = [
+    (np.array([0.0, 0.03, np.pi]), np.array([0.0, -0.03, 0.0])),
+    (np.array([0.0, 0.03, np.pi]), np.array([0.0, -0.03, 0.0])),
+    (np.array([0.0, 0.03, np.pi]), np.array([0.0, -0.03, 0.0])),
+    (np.array([0.0, 0.03, np.pi]), np.array([0.0, -0.03, 0.0])),
+]
 def naive_open_loop(bimanual_kuka: BimanualKuka, qgoal_thanos, qgoal_medusa, angle = 30):
     assert 0 <= angle <= 180, "Angle must be between 0 and 180 degrees"
     #solve thanos goal, then medusa goal
@@ -25,10 +31,13 @@ if __name__ == '__main__':
     rospy.sleep(0.1)
     bimanual_kuka.setup_robot()
     
-    qgoal_thanos = np.array([0.0, 0.03, np.pi])
-    qgoal_medusa = np.array([0.0, -0.03, 0.0])
+    path_num = 1
+    angle = 30
+    qgoal_thanos = PATH_GOALS[path_num][0]
+    qgoal_medusa = PATH_GOALS[path_num][1]
     
-    qthanos, qmedusa = naive_open_loop(bimanual_kuka, qgoal_thanos, qgoal_medusa, angle = 30)
+    
+    qthanos, qmedusa = naive_open_loop(bimanual_kuka, qgoal_thanos, qgoal_medusa, angle = angle)
     
     print("current se2 position of thanos: ", qthanos)
     print("current se2 position of medusa: ", qmedusa)
@@ -37,5 +46,5 @@ if __name__ == '__main__':
     
     data = np.stack((qthanos, qmedusa, qgoal_thanos, qgoal_medusa))
     # save data into data folder ./data
-    np.save("data/naive_closed_loop_data.npy", data)
+    np.save(f"data/naive/closed_loop/circle/even/naive_angle_{angle}_path_{path_num}.npy", data)
     rospy.spin()
