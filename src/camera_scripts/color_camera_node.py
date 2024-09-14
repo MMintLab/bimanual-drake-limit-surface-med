@@ -99,7 +99,7 @@ class TagVisualization:
         # draw rotated x-axis in center of image in red
         cv2.arrowedLine(cv_image, (w//2, h//2), (w//2 + int(rotated_x[0]*100), h//2 + int(rotated_x[1]*100)), (0,0,255), 3)
         # draw rotated y-axis in center of image in green
-        # cv2.arrowedLine(cv_image, (w//2, h//2), (w//2 + int(rotated_y[0]*100), h//2 + int(rotated_y[1]*100)), (0,255,0), 3)
+        cv2.arrowedLine(cv_image, (w//2, h//2), (w//2 + int(rotated_y[0]*100), h//2 + int(rotated_y[1]*100)), (0,255,0), 3)
         
         #draw red circle in center of image
         cv2.circle(cv_image, (w//2, h//2), 5, (0,0,255), -1)
