@@ -132,7 +132,7 @@ def inhand_planner(obj2left_se2: np.ndarray, obj2right_se2: np.ndarray, desired_
 if __name__ == '__main__':
     import matplotlib.pyplot as plt
     
-    palm_radius = 0.04
+    palm_radius = 0.032
     obj2left_se2  = np.array([0,0,np.pi])
     obj2right_se2 = np.array([0,0,0])
     
@@ -140,7 +140,7 @@ if __name__ == '__main__':
     desired_obj2right_se2 = np.array([-0.00, -0.03, np.pi/6])
     
     dls_params = DualLimitSurfaceParams(mu_A = 2.0, r_A = 0.04, N_A = 15.0, mu_B = 2.0, r_B = 0.03, N_B = 20.0)
-    obj2left, obj2right, vs = inhand_planner(obj2left_se2, obj2right_se2, desired_obj2left_se2, desired_obj2right_se2, dls_params, steps = 5, angle = 60 * np.pi/180, palm_radius=palm_radius, kv = 20.0)
+    obj2left, obj2right, vs = inhand_planner(obj2left_se2, obj2right_se2, desired_obj2left_se2, desired_obj2right_se2, dls_params, steps = 10, angle = 60 * np.pi/180, palm_radius=palm_radius, kv = 20.0)
     
     print(np.round(desired_obj2left_se2 - obj2left[:,-1],4))
     print(np.round(desired_obj2right_se2 - obj2right[:,-1],4))

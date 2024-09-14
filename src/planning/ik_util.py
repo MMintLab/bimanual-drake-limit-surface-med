@@ -251,6 +251,52 @@ def run_full_inhand_og(desired_obj2left_se2: np.ndarray, desired_obj2right_se2: 
     
     return ts, left_poses, right_poses, obj_poses
 
+def run_full_inhand(desired_obj2left_se2s: list[np.ndarray], desired_obj2right_se2s: list[np.ndarray], left_pose0: RigidTransform, right_pose0: RigidTransform, object_pose0: RigidTransform, rotation: float = np.pi/3, fix_right=False, rotate_steps=10, rotate_time=10.0, se2_time = 10.0, back_time=10.0):
+    left_poses = [left_pose0]
+    right_poses = [right_pose0]
+    obj_poses = [object_pose0]
+    ts = [0.0]
+    
+    
+    for desired_obj2left_se2, desired_obj2right_se2 in zip(desired_obj2left_se2s, desired_obj2right_se2s):
+        ts, left_poses, right_poses, obj_poses = pause_for(1.0, ts, left_poses, right_poses, obj_poses)
+        
+        # rotate left
+        ts, left_poses, right_poses, obj_poses = inhand_rotate_poses(rotation, object_pose0, ts, left_poses, right_poses, obj_poses, steps=rotate_steps, rotate_time=rotate_time)
+        ts, left_poses, right_poses, obj_poses = pause_for(2.00, ts, left_poses, right_poses, obj_poses)
+        
+        # move left
+        ts, left_poses, right_poses, obj_poses = inhand_se2_poses(desired_obj2left_se2, ts, left_poses, right_poses, obj_poses, left=False, se2_time=se2_time)
+        ts, left_poses, right_poses, obj_poses = pause_for(2.0, ts, left_poses, right_poses, obj_poses)
+        
+        #rotate back
+        ts, left_poses, right_poses, obj_poses = inhand_rotate_poses(-rotation, object_pose0, ts, left_poses, right_poses, obj_poses, steps=rotate_steps, rotate_time=rotate_time)
+        ts, left_poses, right_poses, obj_poses = pause_for(2.0, ts, left_poses, right_poses, obj_poses)
+        
+        # move back (original object pose is the reference)
+        ts, left_poses, right_poses, obj_poses = inhand_back_poses(ts, left_poses, right_poses, obj_poses, object_pose0, back_time=back_time)
+        ts, left_poses, right_poses, obj_poses = pause_for(2.0, ts, left_poses, right_poses, obj_poses)
+        
+        # rotate right
+        ts, left_poses, right_poses, obj_poses = inhand_rotate_poses(-rotation, object_pose0, ts, left_poses, right_poses, obj_poses, steps=rotate_steps, rotate_time=rotate_time)
+        ts, left_poses, right_poses, obj_poses = pause_for(2.00, ts, left_poses, right_poses, obj_poses)
+        
+        # move right
+        ts, left_poses, right_poses, obj_poses = inhand_se2_poses(desired_obj2right_se2, ts, left_poses, right_poses, obj_poses, left=True, se2_time=se2_time)
+        ts, left_poses, right_poses, obj_poses = pause_for(2.0, ts, left_poses, right_poses, obj_poses)
+        
+        #rotate back
+        ts, left_poses, right_poses, obj_poses = inhand_rotate_poses(rotation, object_pose0, ts, left_poses, right_poses, obj_poses, steps=rotate_steps, rotate_time=rotate_time)
+        ts, left_poses, right_poses, obj_poses = pause_for(2.0, ts, left_poses, right_poses, obj_poses)
+        
+        # move back (original object pose is the reference)
+        ts, left_poses, right_poses, obj_poses = inhand_back_poses(ts, left_poses, right_poses, obj_poses, object_pose0, back_time=back_time)
+        ts, left_poses, right_poses, obj_poses = pause_for(2.0, ts, left_poses, right_poses, obj_poses)
+    if fix_right:    
+        # fix the right pose to be rotated by pi/2 on y-axis
+        right_poses = [right_pose @ RigidTransform(RollPitchYaw(0.0,np.pi,0.0), np.zeros(3)) for right_pose in right_poses]
+        
+    return ts, left_poses, right_poses, obj_poses
 def piecewise_traj(ts: List[float], left_poses: List[RigidTransform], right_poses: List[RigidTransform], object_poses: List[RigidTransform]):
     #first order hold piecewise
     left_piecewise =  PiecewisePose.MakeLinear(ts, left_poses)
