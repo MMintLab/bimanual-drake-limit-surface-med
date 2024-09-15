@@ -1,5 +1,5 @@
 from pydrake.multibody.plant import MultibodyPlant
-from pydrake.geometry import ProximityProperties, Box
+from pydrake.geometry import ProximityProperties, Box, HalfSpace
 from pydrake.multibody.tree import RigidBody, SpatialInertia, UnitInertia
 from pydrake.math import RigidTransform
 import numpy as np
@@ -22,6 +22,11 @@ def RegisterShape(plant: MultibodyPlant, name:str, body: RigidBody,
         plant.RegisterVisualGeometry(
             body, rt, shape, name, color
         )
+def AddGround(plant: MultibodyPlant):
+    ground_color = [0.5, 1.0, 0.5, 1.0]
+    ground_prop = AddContactModel(plant, halfspace_slab=0.5, hydro_mod = 3e4, dissip=1.0, mu_static=1.0, res_hint=10)
+    RegisterShape(plant, "GroundVisualGeometry", plant.world_body(), HalfSpace(), ground_prop, ground_color)
+    
 def AddBox(plant: MultibodyPlant, name: str, lwh=(1.0,1.0,1.0), mass=1.0, mu = 1.0, color=[1,0,0,1]):
     box_instance = plant.AddModelInstance(name)
 

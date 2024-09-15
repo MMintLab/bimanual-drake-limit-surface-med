@@ -162,7 +162,7 @@ if __name__ == '__main__':
     desired_obj2right_se2 = np.array([0.0, -0.03, np.pi])
     
     dls_params = DualLimitSurfaceParams(mu_A = 0.75, r_A = 0.04, N_A = 20.0, mu_B = 0.75, r_B = 0.04, N_B = 20.0)
-    obj2left, obj2right, vs = inhand_planner(obj2left_se2, obj2right_se2, desired_obj2left_se2, desired_obj2right_se2, dls_params, steps = 5, angle = 45, palm_radius=palm_radius, kv = 20.0)
+    obj2left, obj2right, vs = inhand_planner(obj2left_se2, obj2right_se2, desired_obj2left_se2, desired_obj2right_se2, dls_params, steps = 5, angle = 90, palm_radius=palm_radius, kv = 20.0)
     
     print(np.round(desired_obj2left_se2 - obj2left[:,-1],4))
     print(np.round(desired_obj2right_se2 - obj2right[:,-1],4))
