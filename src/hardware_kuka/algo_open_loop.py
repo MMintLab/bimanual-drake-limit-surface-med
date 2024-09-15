@@ -13,7 +13,7 @@ PATH_GOALS = [
 ]
 
 #mm for tables
-def algo_closed_loop(bimanual_kuka: BimanualKuka, goal_thanos, goal_medusa, angle = 30):
+def algo_open_loop(bimanual_kuka: BimanualKuka, goal_thanos, goal_medusa, angle = 30):
     #get current se2 positions of end-effector
     current_thanos = np.array([0,0,np.pi])
     current_medusa = np.array([0,0,0])
@@ -33,33 +33,36 @@ def algo_closed_loop(bimanual_kuka: BimanualKuka, goal_thanos, goal_medusa, angl
     # rotate to from horizontal to vertical
     bimanual_kuka.rotate_arms(90 * np.pi / 180, readjust_arms=False, rotate_time = 15.0)
     for desired_obj2left_se2, desired_obj2right_se2 in zip(desired_obj2left_se2s, desired_obj2right_se2s):
-        bimanual_kuka.rotate_arms(-(90-angle) * np.pi / 180, grasp_force = 25.0, rotate_time = 15.0)
-        bimanual_kuka.se2_arms(desired_obj2left_se2, medusa=False, se2_time = 10.0, force = 0.0, object_kg = 3.0, filter_vector_medusa=np.array([1,1,1,1,1,0]), filter_vector_thanos=np.array([1,1,1,1,1,1]))
-        bimanual_kuka.rotate_arms((90-angle) * np.pi / 180, readjust_arms=False, rotate_time=15.0) #back to vertical
-        bimanual_kuka.move_back(endtime=10.0)
+        bimanual_kuka.rotate_arms(-(90-angle) * np.pi / 180, rotate_time = 15.0, grasp_force = 30.0)
+        bimanual_kuka.se2_arms_open_loop(desired_obj2left_se2, current_thanos, medusa=False, se2_time = 10.0, force = 0.0, object_kg = 3.5, filter_vector_medusa=np.array([1,1,1,1,1,0]), filter_vector_thanos=np.array([1,1,1,1,1,1]))
+        bimanual_kuka.rotate_arms((90-angle) * np.pi / 180, readjust_arms=False, rotate_time=15.0, grasp_force = 30.0) #back to vertical
+        bimanual_kuka.move_back(endtime=5.0)
         
-        bimanual_kuka.rotate_arms((90-angle) * np.pi / 180, grasp_force = 25.0, rotate_time = 15.0)
-        bimanual_kuka.se2_arms(desired_obj2right_se2, medusa=True, se2_time = 10.0, force = 0.0, object_kg = 3.0, filter_vector_medusa=np.array([1,1,1,1,1,1]), filter_vector_thanos=np.array([1,1,1,1,1,0]))
-        bimanual_kuka.rotate_arms(-(90-angle) * np.pi / 180, readjust_arms=False, rotate_time = 15.0) #back to vertical
-        bimanual_kuka.move_back(endtime=10.0)
+        bimanual_kuka.rotate_arms((90-angle) * np.pi / 180, rotate_time = 15.0, grasp_force = 30.0)
+        bimanual_kuka.se2_arms_open_loop(desired_obj2right_se2, current_medusa, medusa=True, se2_time = 10.0, force = 0.0, object_kg = 3.5, filter_vector_medusa=np.array([1,1,1,1,1,1]), filter_vector_thanos=np.array([1,1,1,1,1,0]))
+        bimanual_kuka.rotate_arms(-(90-angle) * np.pi / 180, readjust_arms=False, rotate_time = 15.0, grasp_force=30.0) #back to vertical
+        bimanual_kuka.move_back(endtime=5.0)
+        
+        current_thanos = desired_obj2left_se2
+        current_medusa = desired_obj2right_se2
         
     qthanos = bimanual_kuka.camera_manager.get_thanos_se2()
     qmedusa = bimanual_kuka.camera_manager.get_medusa_se2()
     return qthanos, qmedusa
         
 if __name__ == '__main__':
-    rospy.init_node("algo_closed_loop_node")
+    rospy.init_node("algo_open_loop_node")
     bimanual_kuka = BimanualKuka(scenario_file="../../config/bimanual_med_hardware_gamma.yaml", directives_file="../../config/bimanual_med_gamma.yaml", obj_feedforward=5.0)
     rospy.sleep(0.1)
     bimanual_kuka.setup_robot(gap=0.012)
     
     path_num = 0
-    angle = 45
+    angle = 60
     qgoal_thanos = PATH_GOALS[path_num][0]
     qgoal_medusa = PATH_GOALS[path_num][1]
     
-    # create fork, parent runs closed loop, child runs open loop
-    qthanos, qmedusa = algo_closed_loop(bimanual_kuka, qgoal_thanos, qgoal_medusa, angle = angle)
+    # create fork, parent runs open loop, child runs open loop
+    qthanos, qmedusa = algo_open_loop(bimanual_kuka, qgoal_thanos, qgoal_medusa, angle = angle)
     
     print("current se2 position of thanos: ", qthanos)
     print("current se2 position of medusa: ", qmedusa)
@@ -73,9 +76,9 @@ if __name__ == '__main__':
     # save data into data folder ./data
     
     #make folder if not exists
-    if not os.path.exists(f"data/algo/closed_loop/circle/even"):
-        os.makedirs(f"data/algo/closed_loop/circle/even")
-    np.save(f"data/algo/closed_loop/circle/even/algo_angle_{angle}_path_{path_num}_MSE.npy", data)
+    if not os.path.exists(f"data/algo/open_loop/circle/even"):
+        os.makedirs(f"data/algo/open_loop/circle/even")
+    np.save(f"data/algo/open_loop/circle/even/algo_angle_{angle}_path_{path_num}_MSE.npy", data)
     
     bimanual_kuka.rotate_arms(-90 * np.pi / 180, readjust_arms=False)
     print("Done")
