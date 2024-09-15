@@ -32,7 +32,17 @@ from planning.object_compensation import ApplyForce
 from gamma import GammaManager
 from scipy.linalg import block_diag
 from camera import CameraManager
+import multiprocessing as mp
 
+def curr_joints_mp(scenario_file = "../../config/bimanual_med_hardware.yaml"):
+    q = mp.Queue()
+    def fn(scenario_file, q):
+        q.put(curr_joints(scenario_file))
+    proc = mp.Process(target=fn, args=(scenario_file, q))
+    proc.start()
+    proc.join()
+    return q.get()
+    
 def curr_joints(scenario_file = "../../config/bimanual_med_hardware.yaml"):
     hardware_diagram, hardware_plant = create_hardware_diagram_plant_bimanual_nofake(scenario_filepath=scenario_file, position_only=True)
     context = hardware_diagram.CreateDefaultContext()
@@ -41,6 +51,15 @@ def curr_joints(scenario_file = "../../config/bimanual_med_hardware.yaml"):
     curr_q_thanos = hardware_diagram.GetOutputPort("iiwa_thanos.position_measured").Eval(context)
     curr_q = np.concatenate([curr_q_thanos, curr_q_medusa])
     return curr_q
+
+def curr_desired_joints_mp(scenario_file = "../../config/bimanual_med_hardware.yaml"):
+    q = mp.Queue()
+    def fn(scenario_file, q):
+        q.put(curr_desired_joints(scenario_file))
+    proc = mp.Process(target=fn, args=(scenario_file, q))
+    proc.start()
+    proc.join()
+    return q.get()
 
 def curr_desired_joints(scenario_file = "../../config/bimanual_med_hardware.yaml"):
     hardware_diagram, hardware_plant = create_hardware_diagram_plant_bimanual_nofake(scenario_filepath=scenario_file, position_only=True)
@@ -51,6 +70,15 @@ def curr_desired_joints(scenario_file = "../../config/bimanual_med_hardware.yaml
     curr_q = np.concatenate([curr_q_thanos, curr_q_medusa])
     return curr_q
 
+def curr_torque_commanded_mp(scenario_file = "../../config/bimanual_med_hardware.yaml"):
+    q = mp.Queue()
+    def fn(scenario_file, q):
+        q.put(curr_torque_commanded(scenario_file))
+    proc = mp.Process(target=fn, args=(scenario_file, q))
+    proc.start()
+    proc.join()
+    return q.get()
+
 def curr_torque_commanded(scenario_file = "../../config/bimanual_med_hardware.yaml"):
     hardware_diagram, hardware_plant = create_hardware_diagram_plant_bimanual_nofake(scenario_filepath=scenario_file, position_only=False)
     context = hardware_diagram.CreateDefaultContext()
@@ -59,6 +87,14 @@ def curr_torque_commanded(scenario_file = "../../config/bimanual_med_hardware.ya
     curr_torque_thanos = hardware_diagram.GetOutputPort("iiwa_thanos.torque_commanded").Eval(context)
     curr_torque = np.concatenate([curr_torque_thanos, curr_torque_medusa])
     return curr_torque
+
+def goto_joints_mp(joint_thanos, joint_medusa, endtime = 30.0, scenario_file = "../../config/bimanual_med_hardware.yaml", directives_file = "../../config/bimanual_med.yaml"):
+    q = mp.Queue()
+    def fn(joint_thanos, joint_medusa, endtime, scenario_file, directives_file, q):
+        goto_joints(joint_thanos, joint_medusa, endtime, scenario_file, directives_file)
+    proc = mp.Process(target=fn, args=(joint_thanos, joint_medusa, endtime, scenario_file, directives_file, q))
+    proc.start()
+    proc.join()
 
 def goto_joints(joint_thanos, joint_medusa, endtime = 30.0, scenario_file = "../../config/bimanual_med_hardware.yaml", directives_file = "../../config/bimanual_med.yaml"):
     root_builder = DiagramBuilder()
@@ -94,6 +130,14 @@ def goto_joints(joint_thanos, joint_medusa, endtime = 30.0, scenario_file = "../
     simulator.set_target_realtime_rate(1.0)
     simulator.AdvanceTo(endtime + 2.0)
     
+def goto_joints_torque_mp(joint_thanos, joint_medusa, wrench_thanos, wrench_medusa, endtime = 30.0, scenario_file = "../../config/bimanual_med_hardware_impedance.yaml", directives_file = "../../config/bimanual_med.yaml"):
+    q = mp.Queue()
+    def fn(joint_thanos, joint_medusa, wrench_thanos, wrench_medusa, endtime, scenario_file, directives_file, q):
+        goto_joints_torque(joint_thanos, joint_medusa, wrench_thanos, wrench_medusa, endtime, scenario_file, directives_file)
+    proc = mp.Process(target=fn, args=(joint_thanos, joint_medusa, wrench_thanos, wrench_medusa, endtime, scenario_file, directives_file, q))
+    proc.start()
+    proc.join()
+
 def goto_joints_torque(joint_thanos, joint_medusa, wrench_thanos, wrench_medusa, endtime = 30.0, scenario_file = "../../config/bimanual_med_hardware_impedance.yaml", directives_file = "../../config/bimanual_med.yaml"):
     root_builder = DiagramBuilder()
     hardware_diagram, hardware_plant = create_hardware_diagram_plant_bimanual_nofake(scenario_filepath=scenario_file, position_only=False)
@@ -197,6 +241,14 @@ class RotateWrench(LeafSystem):
         medusa_wrench = medusa_rot @ self._medusa_wrench_port.Eval(context)
         output.SetFromVector(medusa_wrench)
         
+def direct_joint_torque_mp(joint_thanos, joint_medusa, wrench_thanos, wrench_medusa, endtime = 30.0, scenario_file = "../../config/bimanual_med_hardware_impedance.yaml", directives_file = "../../config/bimanual_med.yaml"):
+    q = mp.Queue()
+    def fn(joint_thanos, joint_medusa, wrench_thanos, wrench_medusa, endtime, scenario_file, directives_file, q):
+        direct_joint_torque(joint_thanos, joint_medusa, wrench_thanos, wrench_medusa, endtime, scenario_file, directives_file)
+    proc = mp.Process(target=fn, args=(joint_thanos, joint_medusa, wrench_thanos, wrench_medusa, endtime, scenario_file, directives_file, q))
+    proc.start()
+    proc.join()
+
 def direct_joint_torque(joint_thanos, joint_medusa, wrench_thanos, wrench_medusa, endtime = 30.0, scenario_file = "../../config/bimanual_med_hardware_impedance.yaml", directives_file = "../../config/bimanual_med.yaml"):
     root_builder = DiagramBuilder()
     hardware_diagram, hardware_plant = create_hardware_diagram_plant_bimanual_nofake(scenario_filepath=scenario_file, position_only=False)
@@ -259,6 +311,14 @@ def direct_joint_torque(joint_thanos, joint_medusa, wrench_thanos, wrench_medusa
     simulator = Simulator(root_diagram)
     simulator.set_target_realtime_rate(1.0)
     simulator.AdvanceTo(endtime + 1.0)    
+
+def follow_trajectory_apply_push_mp(traj_thanos, traj_medusa, camera_manager: CameraManager, force = 30.0, object_kg = 0.5, feedforward_z_force = 0.0, endtime = 1e12, scenario_file = "../../config/bimanual_med_hardware_gamma.yaml", directives_file = "../../config/bimanual_med_gamma.yaml"):
+    q = mp.Queue()
+    def fn(traj_thanos, traj_medusa, camera_manager, force, object_kg, feedforward_z_force, endtime, scenario_file, directives_file, q):
+        follow_trajectory_apply_push(traj_thanos, traj_medusa, camera_manager, force, object_kg, feedforward_z_force, endtime, scenario_file, directives_file)
+    proc = mp.Process(target=fn, args=(traj_thanos, traj_medusa, camera_manager, force, object_kg, feedforward_z_force, endtime, scenario_file, directives_file, q))
+    proc.start()
+    proc.join()
 
 def follow_trajectory_apply_push(traj_thanos, traj_medusa, camera_manager: CameraManager, force = 30.0, object_kg = 0.5, feedforward_z_force = 0.0, endtime = 1e12, scenario_file = "../../config/bimanual_med_hardware_gamma.yaml", directives_file = "../../config/bimanual_med_gamma.yaml"):
     root_builder = DiagramBuilder()
@@ -625,6 +685,14 @@ class HackyVectorSource(LeafSystem):
             print("error:", np.linalg.norm(np.abs(current_se2[:2] - self.desired_se2[:2])))
             output.SetFromVector(desired_q)
 
+def follow_traj_and_torque_gamma_se2_mp(desired_se2, traj_thanos, traj_medusa, camera_manager: CameraManager, gamma_manager: GammaManager, force = 30.0, object_kg = 0.5, endtime = 1e12, scenario_file = "../../config/bimanual_med_hardware_gamma.yaml", directives_file = "../../config/bimanual_med_gamma.yaml", filter_vector_medusa = np.array([0.0, 0.0, 1.0, 1.0, 1.0, 0.0]), filter_vector_thanos = np.array([0.0, 0.0, 1.0, 1.0, 1.0, 0.0]), medusa=False):
+    q = mp.Queue()
+    def fn(desired_se2, traj_thanos, traj_medusa, camera_manager, gamma_manager, force, object_kg, endtime, scenario_file, directives_file, filter_vector_medusa, filter_vector_thanos, medusa, q):
+        follow_traj_and_torque_gamma_se2(desired_se2, traj_thanos, traj_medusa, camera_manager, gamma_manager, force, object_kg, endtime, scenario_file, directives_file, filter_vector_medusa, filter_vector_thanos, medusa)
+    proc = mp.Process(target=fn, args=(desired_se2, traj_thanos, traj_medusa, camera_manager, gamma_manager, force, object_kg, endtime, scenario_file, directives_file, filter_vector_medusa, filter_vector_thanos, medusa, q))
+    proc.start()
+    proc.join()
+
 def follow_traj_and_torque_gamma_se2(desired_se2, traj_thanos, traj_medusa, camera_manager: CameraManager, gamma_manager: GammaManager, force = 30.0, object_kg = 0.5, endtime = 1e12, scenario_file = "../../config/bimanual_med_hardware_gamma.yaml", directives_file = "../../config/bimanual_med_gamma.yaml", filter_vector_medusa = np.array([0.0, 0.0, 1.0, 1.0, 1.0, 0.0]), filter_vector_thanos = np.array([0.0, 0.0, 1.0, 1.0, 1.0, 0.0]), medusa=False):
     move_medusa = not medusa
     root_builder = DiagramBuilder()
@@ -708,6 +776,14 @@ def follow_traj_and_torque_gamma_se2(desired_se2, traj_thanos, traj_medusa, came
     simulator.AdvanceTo(endtime + 2.0)
     
 
+def follow_traj_and_torque_gamma_mp(traj_thanos, traj_medusa, camera_manager: CameraManager, gamma_manager: GammaManager, force = 30.0, object_kg = 0.5, endtime = 1e12, scenario_file = "../../config/bimanual_med_hardware_gamma.yaml", directives_file = "../../config/bimanual_med_gamma.yaml", filter_vector_medusa = np.array([0.0, 0.0, 1.0, 1.0, 1.0, 0.0]), filter_vector_thanos = np.array([0.0, 0.0, 1.0, 1.0, 1.0, 0.0])):
+    q = mp.Queue()
+    def fn(traj_thanos, traj_medusa, camera_manager, gamma_manager, force, object_kg, endtime, scenario_file, directives_file, filter_vector_medusa, filter_vector_thanos, q):
+        follow_traj_and_torque_gamma(traj_thanos, traj_medusa, camera_manager, gamma_manager, force, object_kg, endtime, scenario_file, directives_file, filter_vector_medusa, filter_vector_thanos)
+    proc = mp.Process(target=fn, args=(traj_thanos, traj_medusa, camera_manager, gamma_manager, force, object_kg, endtime, scenario_file, directives_file, filter_vector_medusa, filter_vector_thanos, q))
+    proc.start()
+    proc.join()
+
 def follow_traj_and_torque_gamma(traj_thanos, traj_medusa, camera_manager: CameraManager, gamma_manager: GammaManager, force = 30.0, object_kg = 0.5, endtime = 1e12, scenario_file = "../../config/bimanual_med_hardware_gamma.yaml", directives_file = "../../config/bimanual_med_gamma.yaml", filter_vector_medusa = np.array([0.0, 0.0, 1.0, 1.0, 1.0, 0.0]), filter_vector_thanos = np.array([0.0, 0.0, 1.0, 1.0, 1.0, 0.0])):
     root_builder = DiagramBuilder()
     hardware_diagram, hardware_plant = create_hardware_diagram_plant_bimanual_nofake(scenario_filepath=scenario_file, position_only=False)
@@ -777,6 +853,16 @@ def follow_traj_and_torque_gamma(traj_thanos, traj_medusa, camera_manager: Camer
     simulator = Simulator(root_diagram)
     simulator.set_target_realtime_rate(1.0)
     simulator.AdvanceTo(endtime + 2.0)
+
+def close_arms_mp(plant_arms: MultibodyPlant, plant_context, q0, gap = 0.0001):
+    q = mp.Queue()
+    def fn(plant_arms, plant_context, q0, gap, q):
+        new_joints = close_arms(plant_arms, plant_context, q0, gap)
+        q.put(new_joints)
+    proc = mp.Process(target=fn, args=(plant_arms, plant_context, q0, gap, q))
+    proc.start()
+    proc.join()
+    return q.get()
 
 def close_arms(plant_arms: MultibodyPlant, plant_context, q0, gap = 0.0001):
     plant_arms.SetPositions(plant_context, plant_arms.GetModelInstanceByName("iiwa_thanos"), q0[:7])

@@ -18,19 +18,19 @@ import sys
 sys.path.append('..')
 from load.sim_setup import load_iiwa_setup
 from movement_lib import (
-    goto_joints,
-    curr_joints,
-    curr_torque_commanded,
-    curr_desired_joints,
-    close_arms,
-    direct_joint_torque,
+    goto_joints_mp,
+    curr_joints_mp,
+    curr_torque_commanded_mp,
+    curr_desired_joints_mp,
+    close_arms_mp,
+    direct_joint_torque_mp,
     inhand_rotate_traj,
     generate_trajectory,
-    follow_trajectory_apply_push,
     inhand_se2_traj,
-    follow_traj_and_torque_gamma,
-    goto_joints_torque,
-    follow_traj_and_torque_gamma_se2
+    follow_traj_and_torque_gamma_mp,
+    goto_joints_torque_mp,
+    follow_traj_and_torque_gamma_se2_mp,
+    curr_joints_mp
 )
 from planning.ik_util import solveDualIK
 from scipy.linalg import block_diag
@@ -71,7 +71,7 @@ class BimanualKuka:
         
         self.home_q = np.array(self.home_q)
         
-        self.des_q = curr_desired_joints(scenario_file=self.scenario_file)
+        self.des_q = curr_desired_joints_mp(scenario_file=self.scenario_file)
         
         self.thanos_stiffness = np.ones(7) * 1000.0
         self.medusa_stiffness = np.ones(7) * 1000.0
@@ -79,11 +79,11 @@ class BimanualKuka:
         self.object_feedforward_force = obj_feedforward
     
     def get_torque_commanded(self):
-        curr_torque = curr_torque_commanded(scenario_file=self.scenario_file)
+        curr_torque = curr_torque_commanded_mp(scenario_file=self.scenario_file)
         return curr_torque
     
     def get_gamma_wrench(self):
-        curr_q = curr_joints(scenario_file=self.scenario_file)
+        curr_q = curr_joints_mp(scenario_file=self.scenario_file)
         thanos_pose, medusa_pose = self.get_poses(curr_q)
         
         wrench_thanos = self.gamma_manager.get_thanos_wrench(thanos2world_rot=thanos_pose.rotation().matrix())
@@ -106,7 +106,7 @@ class BimanualKuka:
         wrench_thanos = np.diag(filter_thanos) @ wrench_thanos
         
         # get wrench in world frame
-        curr_q = curr_joints(scenario_file=self.scenario_file)
+        curr_q = curr_joints_mp(scenario_file=self.scenario_file)
         thanos_pose, medusa_pose = self.get_poses(curr_q)
         
         thanos_rot = block_diag(thanos_pose.rotation().matrix(), thanos_pose.rotation().matrix())
@@ -143,11 +143,11 @@ class BimanualKuka:
 
     def goto_joints(self, thanos_q, medusa_q, joint_speed=5.0, endtime = None):
         if endtime is None:
-            curr_q = curr_joints(scenario_file=self.scenario_file)
+            curr_q = curr_joints_mp(scenario_file=self.scenario_file)
             thanos_endtime = np.max(np.abs(thanos_q - curr_q[:7])) / joint_speed
             medusa_endtime = np.max(np.abs(medusa_q - curr_q[7:])) / joint_speed
             endtime = np.max([thanos_endtime, medusa_endtime])
-        goto_joints(thanos_q, medusa_q, endtime=endtime, scenario_file=self.scenario_file, directives_file=self.directives_file)
+        goto_joints_mp(thanos_q, medusa_q, endtime=endtime, scenario_file=self.scenario_file, directives_file=self.directives_file)
         
         
     def get_poses(self, q):
@@ -167,11 +167,11 @@ class BimanualKuka:
     def reset_arms(self):
         thanos_q = np.zeros(7)
         medusa_q = np.zeros(7)
-        goto_joints(thanos_q, medusa_q, endtime=30.0, scenario_file=self.scenario_file, directives_file=self.directives_file)
+        goto_joints_mp(thanos_q, medusa_q, endtime=30.0, scenario_file=self.scenario_file, directives_file=self.directives_file)
         
     # move arms towards setup position
     def go_home(self):
-        curr_q = curr_joints(scenario_file=self.scenario_file)
+        curr_q = curr_joints_mp(scenario_file=self.scenario_file)
         
         joint_speed = 5.0 * np.pi / 180.0
         
@@ -182,28 +182,28 @@ class BimanualKuka:
         print("thanos_endtime: ", thanos_endtime)
         
         input("Press Enter to setup medusa arm.")
-        goto_joints(curr_q[:7], self.home_q[7:], endtime=medusa_endtime, scenario_file=self.scenario_file, directives_file=self.directives_file)
+        goto_joints_mp(curr_q[:7], self.home_q[7:], endtime=medusa_endtime, scenario_file=self.scenario_file, directives_file=self.directives_file)
         input("Press Enter to setup thanos arm.")
-        goto_joints(self.home_q[:7], self.home_q[7:], endtime=thanos_endtime, scenario_file=self.scenario_file, directives_file=self.directives_file)
+        goto_joints_mp(self.home_q[:7], self.home_q[7:], endtime=thanos_endtime, scenario_file=self.scenario_file, directives_file=self.directives_file)
         self.des_q = self.home_q
         
     def close_gripper(self, gap = 0.01):
         curr_des_q = self.des_q
         
         input("Press Enter to close gripper")
-        des_q = close_arms(self._plant, self._plant_context, curr_des_q, gap=gap)
+        des_q = close_arms_mp(self._plant, self._plant_context, curr_des_q, gap=gap)
         input("Press Enter to grasp object")
         wrench_thanos = np.concatenate([np.zeros(3), np.array([0, 0.0, self.grasp_force])])
         wrench_medusa = np.concatenate([np.zeros(3), np.array([0, 0.0, self.grasp_force + self.object_feedforward_force])])
         
-        direct_joint_torque(des_q[:7], des_q[7:], wrench_thanos, wrench_medusa, endtime=5.0, scenario_file=self.scenario_file, directives_file=self.directives_file)
+        direct_joint_torque_mp(des_q[:7], des_q[7:], wrench_thanos, wrench_medusa, endtime=5.0, scenario_file=self.scenario_file, directives_file=self.directives_file)
                 
         delta_q = self.zero_grasp_external_forces()
         des_q[:7] += delta_q[:7]
         des_q[7:] += delta_q[7:]
         
         input("Press Enter to zero external forces")
-        goto_joints_torque(des_q[:7], des_q[7:], wrench_thanos, wrench_medusa, endtime=5.0, scenario_file=self.scenario_file, directives_file=self.directives_file)
+        goto_joints_torque_mp(des_q[:7], des_q[7:], wrench_thanos, wrench_medusa, endtime=5.0, scenario_file=self.scenario_file, directives_file=self.directives_file)
         
         gamma_wrench_thanos, gamma_wrench_medusa = self.get_gamma_wrench()
         print("gamma_wrench_thanos: ", gamma_wrench_thanos)
@@ -231,7 +231,7 @@ class BimanualKuka:
         filter_vector_medusa = np.array([0,0,1,1,1,0])
         filter_vector_thanos = np.array([0,0,1,1,1,0])
         # follow_trajectory_apply_push(thanos_piecewise, medusa_piecewise, force=30.0, camera_manager=self.camera_manager, object_kg = 0.5, endtime = T, scenario_file=self.scenario_file, directives_file=self.directives_file)
-        follow_traj_and_torque_gamma(thanos_piecewise, medusa_piecewise, self.camera_manager, self.gamma_manager, force=30.0, object_kg=0.5, endtime = T, scenario_file=self.scenario_file, directives_file=self.directives_file,
+        follow_traj_and_torque_gamma_mp(thanos_piecewise, medusa_piecewise, self.camera_manager, self.gamma_manager, force=30.0, object_kg=0.5, endtime = T, scenario_file=self.scenario_file, directives_file=self.directives_file,
                                     filter_vector_medusa=filter_vector_medusa, filter_vector_thanos=filter_vector_thanos)
         self.angle += rotation
         des_thanos_q = thanos_piecewise.value(T).flatten()
@@ -246,7 +246,7 @@ class BimanualKuka:
                 wrench_thanos = np.concatenate([np.zeros(3), np.array([0, 0.0, grasp_force])])
                 wrench_medusa = np.concatenate([np.zeros(3), np.array([0, 0.0, 0])])
             
-            goto_joints_torque(des_q[:7], des_q[7:], wrench_thanos, wrench_medusa, endtime=5.0, scenario_file=self.scenario_file, directives_file=self.directives_file)
+            goto_joints_torque_mp(des_q[:7], des_q[7:], wrench_thanos, wrench_medusa, endtime=5.0, scenario_file=self.scenario_file, directives_file=self.directives_file)
 
         print("Sensing before se2")        
         gamma_wrench_thanos, gamma_wrench_medusa = self.get_gamma_wrench()
@@ -264,7 +264,7 @@ class BimanualKuka:
         thanos_pose, medusa_pose = self.get_poses(curr_des_q)
         thanos_ee_piecewise, medusa_ee_piecewise, T = inhand_se2_traj(thanos_pose, medusa_pose, current_obj2arm_se2, desired_obj2arm_se2, medusa=medusa, se2_time=se2_time)
         thanos_piecewise, medusa_piecewise, T = generate_trajectory(self._plant, curr_des_q, thanos_ee_piecewise, medusa_ee_piecewise, T, tsteps=100)
-        follow_traj_and_torque_gamma_se2(desired_obj2arm_se2, thanos_piecewise, medusa_piecewise, self.camera_manager, self.gamma_manager, force=force, object_kg=object_kg, endtime = T, scenario_file=self.scenario_file, directives_file=self.directives_file,
+        follow_traj_and_torque_gamma_se2_mp(desired_obj2arm_se2, thanos_piecewise, medusa_piecewise, self.camera_manager, self.gamma_manager, force=force, object_kg=object_kg, endtime = T, scenario_file=self.scenario_file, directives_file=self.directives_file,
                                      filter_vector_medusa=filter_vector_medusa, filter_vector_thanos=filter_vector_thanos, medusa=medusa)
         des_thanos_q = thanos_piecewise.value(T).flatten()
         des_medusa_q = medusa_piecewise.value(T).flatten()
@@ -284,7 +284,7 @@ class BimanualKuka:
         
         # follow_traj_and_torque_gamma(thanos_piecewise, medusa_piecewise, self.camera_manager, self.gamma_manager, force=force, object_kg=object_kg, endtime = T, scenario_file=self.scenario_file, directives_file=self.directives_file,
         #                              filter_vector_medusa=filter_vector_medusa, filter_vector_thanos=filter_vector_thanos)
-        follow_traj_and_torque_gamma_se2(desired_obj2arm_se2, thanos_piecewise, medusa_piecewise, self.camera_manager, self.gamma_manager, force=force, object_kg=object_kg, endtime = T, scenario_file=self.scenario_file, directives_file=self.directives_file,
+        follow_traj_and_torque_gamma_se2_mp(desired_obj2arm_se2, thanos_piecewise, medusa_piecewise, self.camera_manager, self.gamma_manager, force=force, object_kg=object_kg, endtime = T, scenario_file=self.scenario_file, directives_file=self.directives_file,
                                      filter_vector_medusa=filter_vector_medusa, filter_vector_thanos=filter_vector_thanos, medusa=medusa)
 
         des_thanos_q = thanos_piecewise.value(T).flatten()
@@ -292,7 +292,7 @@ class BimanualKuka:
         des_q = np.concatenate([des_thanos_q, des_medusa_q])
         self.des_q = des_q
     def move_back(self, endtime = 10.0):
-        curr_q = curr_joints(scenario_file=self.scenario_file)
+        curr_q = curr_joints_mp(scenario_file=self.scenario_file)
         current_thanos_q = curr_q[:7]
         current_medusa_q = curr_q[7:]
         thanos_pose, medusa_pose = self.get_poses(curr_q)
@@ -324,7 +324,7 @@ class BimanualKuka:
         filter_vector_medusa = np.array([0,0,1,1,1,0])
         filter_vector_thanos = np.array([0,0,1,1,1,0])
         # follow_trajectory_apply_push(thanos_piecewise, medusa_piecewise, force=30.0, camera_manager=self.camera_manager, object_kg = 0.5, endtime = T, scenario_file=self.scenario_file, directives_file=self.directives_file)
-        follow_traj_and_torque_gamma(thanos_q_traj, medusa_q_traj, self.camera_manager, self.gamma_manager, force=30.0, object_kg=0.5, endtime = endtime, scenario_file=self.scenario_file, directives_file=self.directives_file,
+        follow_traj_and_torque_gamma_mp(thanos_q_traj, medusa_q_traj, self.camera_manager, self.gamma_manager, force=30.0, object_kg=0.5, endtime = endtime, scenario_file=self.scenario_file, directives_file=self.directives_file,
                                     filter_vector_medusa=filter_vector_medusa, filter_vector_thanos=filter_vector_thanos)
         
         des_q = np.concatenate([desired_thanos_q, desired_medusa_q])
