@@ -12,6 +12,7 @@ PATH_GOALS = [
     (np.array([0.0, 0.0, -np.pi/2]), np.array([0.0, 0.0, np.pi/2])),
 ]
 
+#mm for tables
 def algo_closed_loop(bimanual_kuka: BimanualKuka, goal_thanos, goal_medusa, angle = 30):
     #get current se2 positions of end-effector
     current_thanos = np.array([0,0,np.pi])
@@ -74,7 +75,7 @@ if __name__ == '__main__':
     #make folder if not exists
     if not os.path.exists(f"data/algo/closed_loop/circle/even"):
         os.makedirs(f"data/algo/closed_loop/circle/even")
-    np.save(f"data/algo/closed_loop/circle/even/naive_angle_{angle}_path_{path_num}_MSE.npy", data)
+    np.save(f"data/algo/closed_loop/circle/even/algo_angle_{angle}_path_{path_num}_MSE.npy", data)
     
     bimanual_kuka.rotate_arms(-90 * np.pi / 180, readjust_arms=False)
     print("Done")
