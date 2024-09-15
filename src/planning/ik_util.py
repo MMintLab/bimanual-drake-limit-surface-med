@@ -297,6 +297,7 @@ def run_full_inhand(desired_obj2left_se2s: List[np.ndarray], desired_obj2right_s
         right_poses = [right_pose @ RigidTransform(RollPitchYaw(0.0,np.pi,0.0), np.zeros(3)) for right_pose in right_poses]
         
     return ts, left_poses, right_poses, obj_poses
+
 def piecewise_traj(ts: List[float], left_poses: List[RigidTransform], right_poses: List[RigidTransform], object_poses: List[RigidTransform]):
     #first order hold piecewise
     left_piecewise =  PiecewisePose.MakeLinear(ts, left_poses)

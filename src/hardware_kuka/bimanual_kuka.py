@@ -55,6 +55,9 @@ class BimanualKuka:
         
         self.home_q = [1.0540217588325416, 0.7809724707093576, 0.09313438428576386, -0.5122596993658023, -0.06815758341558487, 1.849912055108764, 1.1014584994181864, -0.633812090276105, 2.049101710112114, 1.2905853609868987, 0.9356053209918564, -1.0266903347613374, -1.6463252209521346, 1.521753948710382]
         self.angle = 0.0
+
+        # self.home_q = [0.616143429570238, 1.6962545441640784, 1.1110463972964275, -1.013969579064842, 1.7121774471629296, 2.024581932313422, -1.6266687105457462, -0.8812609725550722, 0.9981531684014578, 1.7713755144493566, 0.3836090390795142, 1.1602213959287504, -2.024581932313422, -1.3021454001891604]
+        # self.angle = 180.0 * np.pi / 180.0
         
         plant_context = self._plant.CreateDefaultContext()
         self._plant.SetPositions(plant_context, self._plant.GetModelInstanceByName("iiwa_thanos"), self.home_q[:7])
@@ -64,8 +67,7 @@ class BimanualKuka:
         self.target_obj2left_se2_pub = rospy.Publisher("/thanos_target_se2", Vector3, queue_size=1)
         self.target_obj2right_se2_pub = rospy.Publisher("/medusa_target_se2", Vector3, queue_size=1)
         
-        # self.home_q = [0.616143429570238, 1.6962545441640784, 1.1110463972964275, -1.013969579064842, 1.7121774471629296, 2.024581932313422, -1.6266687105457462, -0.8812609725550722, 0.9981531684014578, 1.7713755144493566, 0.3836090390795142, 1.1602213959287504, -2.024581932313422, -1.3021454001891604]
-        # self.angle = 180.0 * np.pi / 180.0
+
         
         self.home_q = np.array(self.home_q)
         
@@ -357,29 +359,23 @@ if __name__ == "__main__":
     # run 2.5 for even
     # run 3.5 for uneven
     
-    bimanual_kuka.rotate_arms(20 * np.pi/180, rotate_time = 15, grasp_force=20.0)
-    bimanual_kuka.se2_arms(desired_obj2left_se2, medusa=False, se2_time=20.0, force = 0.0, object_kg = 2.0, filter_vector_medusa=np.array([1,1,1,1,1,0]), filter_vector_thanos=np.array([0,0,1,1,1,1]))
-    bimanual_kuka.se2_arms(desired_obj2right_se2, medusa=True, se2_time=20.0, force = 0.0, object_kg = 2.0, filter_vector_medusa=np.array([1,1,1,1,1,0]), filter_vector_thanos=np.array([0,0,1,1,1,1]))
-    
-    # input("Press Enter to rotate arms")
     # bimanual_kuka.rotate_arms(20 * np.pi/180, rotate_time = 15, grasp_force=20.0)
-    # input("Press Enter to move arms")
     # bimanual_kuka.se2_arms(desired_obj2left_se2, medusa=False, se2_time=20.0, force = 0.0, object_kg = 2.0, filter_vector_medusa=np.array([1,1,1,1,1,0]), filter_vector_thanos=np.array([0,0,1,1,1,1]))
-    # input("Press Enter to rotate arms")
-    # bimanual_kuka.rotate_arms(70 * np.pi/180, rotate_time = 15, grasp_force=20.0, readjust_arms=False)
+    # bimanual_kuka.se2_arms(desired_obj2right_se2, medusa=True, se2_time=20.0, force = 0.0, object_kg = 2.0, filter_vector_medusa=np.array([1,1,1,1,1,0]), filter_vector_thanos=np.array([0,0,1,1,1,1]))
     
-    # # bimanual_kuka.rotate_arms(70 * np.pi/180, rotate_time = 15, grasp_force=20.0, readjust_arms=False)
-    # # bimanual_kuka.move_back(endtime=15.0)
-    # input("Press Enter to rotate arms")
-    # bimanual_kuka.rotate_arms(70 * np.pi/180, rotate_time = 15, grasp_force=20.0, readjust_arms=False)
-    # # bimanual_kuka.rotate_arms(140 * np.pi/180, rotate_time = 30, grasp_force=20.0)
-    # input("Press Enter to move arms")
-    # bimanual_kuka.se2_arms(desired_obj2right_se2, medusa=True, se2_time=20.0, force = 0.0, object_kg = 2.0, filter_vector_medusa=np.array([0,0,1,1,1,1]), filter_vector_thanos=np.array([1,1,1,1,1,0]))
+    bimanual_kuka.rotate_arms(20 * np.pi/180, rotate_time = 15, grasp_force=25.0)
+    bimanual_kuka.se2_arms(desired_obj2left_se2, medusa=False, se2_time=20.0, force = 0.0, object_kg = 3.0, filter_vector_medusa=np.array([1,1,1,1,1,0]), filter_vector_thanos=np.array([0,0,1,1,1,1]))
+    bimanual_kuka.rotate_arms(70 * np.pi/180, rotate_time = 15, grasp_force=25.0, readjust_arms=False)
     
-    # # bimanual_kuka.rotate_arms(-70 * np.pi/180, rotate_time = 30, grasp_force=20.0, readjust_arms=False)
-    # # bimanual_kuka.move_back(endtime=15.0)
-    # input("Press Enter to rotate arms")
-    # bimanual_kuka.rotate_arms(-160 * np.pi/180, rotate_time = 30, grasp_force=20.0)
+    # bimanual_kuka.rotate_arms(70 * np.pi/180, rotate_time = 15, grasp_force=20.0, readjust_arms=False)
+    # bimanual_kuka.move_back(endtime=15.0)
+    bimanual_kuka.rotate_arms(70 * np.pi/180, rotate_time = 15, grasp_force=25.0, readjust_arms=False)
+    # bimanual_kuka.rotate_arms(140 * np.pi/180, rotate_time = 30, grasp_force=20.0)
+    bimanual_kuka.se2_arms(desired_obj2right_se2, medusa=True, se2_time=20.0, force = 0.0, object_kg = 3.0, filter_vector_medusa=np.array([0,0,1,1,1,1]), filter_vector_thanos=np.array([1,1,1,1,1,0]))
+    
+    # bimanual_kuka.rotate_arms(-70 * np.pi/180, rotate_time = 30, grasp_force=20.0, readjust_arms=False)
+    # bimanual_kuka.move_back(endtime=15.0)
+    bimanual_kuka.rotate_arms(-160 * np.pi/180, rotate_time = 30, grasp_force=25.0)
     
     print("Finished demo")
     current_obj2left_se2, current_obj2right_se2 = bimanual_kuka.get_obj_relative_poses()

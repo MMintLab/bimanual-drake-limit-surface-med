@@ -74,12 +74,12 @@ def curr_joints():
     return curr_q
 
 def goto_joints(joint_thanos, joint_medusa, endtime = 30.0, scenario_file = "../../config/bimanual_med_hardware.yaml", directives_file = "../../config/bimanual_med.yaml"):
-    meshcat = StartMeshcat()
+    meshcat = None
     
     root_builder = DiagramBuilder()
     
     hardware_diagram, hardware_plant = create_hardware_diagram_plant_bimanual(scenario_filepath=scenario_file, meshcat=meshcat, position_only=True)
-    vis_diagram = create_visual_diagram(directives_filepath=directives_file, meshcat=meshcat, package_file="../../package.xml")
+    # vis_diagram = create_visual_diagram(directives_filepath=directives_file, meshcat=meshcat, package_file="../../package.xml")
     
     hardware_block = root_builder.AddSystem(hardware_diagram)
     
@@ -112,11 +112,11 @@ def goto_joints(joint_thanos, joint_medusa, endtime = 30.0, scenario_file = "../
     simulator.AdvanceTo(endtime + 2.0)
 
 def goto_and_torque(joint_thanos, joint_medusa, wrench_thanos, wrench_medusa, endtime = 30.0, scenario_file = "../../config/bimanual_med_hardware_impedance.yaml", directives_file = "../../config/bimanual_med.yaml"):
-    meshcat = StartMeshcat()
+    meshcat = None
     
     root_builder = DiagramBuilder()
     hardware_diagram, hardware_plant = create_hardware_diagram_plant_bimanual(scenario_filepath=scenario_file, position_only=False, meshcat = meshcat)
-    vis_diagram = create_visual_diagram(directives_filepath=directives_file, package_file="../../package.xml", meshcat = meshcat)
+    # vis_diagram = create_visual_diagram(directives_filepath=directives_file, package_file="../../package.xml", meshcat = meshcat)
     
     hardware_block = root_builder.AddSystem(hardware_diagram)
     traj_medusa_block = root_builder.AddSystem(ConstantVectorSource(joint_medusa))
@@ -184,14 +184,14 @@ def generate_trajectory(seed_q0, rotation=np.pi/3, desired_obj2left_se2 = np.arr
     return traj_medusa, traj_thanos, T
 
 def follow_trajectory_and_torque(traj_thanos, traj_medusa, force = 30.0, object_kg = 0.5, endtime = 1e12):
-    meshcat = StartMeshcat()
+    meshcat = None
     scenario_file = "../../config/bimanual_med_hardware_impedance.yaml"
     directives_file = "../../config/bimanual_med.yaml"
         
     root_builder = DiagramBuilder()
     
     hardware_diagram, hardware_plant = create_hardware_diagram_plant_bimanual(scenario_filepath=scenario_file, position_only=False, meshcat = meshcat)
-    vis_diagram = create_visual_diagram(directives_filepath=directives_file, meshcat=meshcat, package_file="../../package.xml")
+    # vis_diagram = create_visual_diagram(directives_filepath=directives_file, meshcat=meshcat, package_file="../../package.xml")
     
     hardware_block = root_builder.AddSystem(hardware_diagram)
     apply_torque_block = root_builder.AddSystem(ApplyForce(hardware_plant, object_kg = object_kg, force=force))

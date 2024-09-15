@@ -74,13 +74,13 @@ if __name__ == '__main__':
     current_obj2left_se2 = np.array([0.0, 0.0, 0.0])
     current_obj2right_se2 = np.array([0.0, 0.0, np.pi])
     
-    desired_obj2left_se2 = np.array([0.00, 0.00, np.pi/4])
-    desired_obj2right_se2 = np.array([0.00, -0.02, np.pi/2])
+    desired_obj2left_se2 = np.array([0.00, 0.02, 0])
+    desired_obj2right_se2 = np.array([0.00, -0.02, np.pi])
     
     
     dls_params = DualLimitSurfaceParams(mu_A = 0.75, r_A = 0.04, N_A = 20.0, mu_B = 0.75, r_B = 0.04, N_B = 20.0)
     horizon = 7
-    obj2left, obj2right, vs = inhand_planner(current_obj2left_se2, current_obj2right_se2, desired_obj2left_se2, desired_obj2right_se2, dls_params, steps = horizon, angle = 90, palm_radius=0.04, kv = 20.0)
+    obj2left, obj2right, vs = inhand_planner(current_obj2left_se2, current_obj2right_se2, desired_obj2left_se2, desired_obj2right_se2, dls_params, steps = horizon, angle = 60, palm_radius=0.04, kv = 20.0)
     
     print(np.round(desired_obj2left_se2 - obj2left[:,-1],4))
     print(np.round(desired_obj2right_se2 - obj2right[:,-1],4))
@@ -106,7 +106,7 @@ if __name__ == '__main__':
     # desired_obj2right_se2 = [np.array([0.00, -0.03, np.pi]), np.array([0.00, 0.00, np.pi])]
     
     # ts, left_poses, right_poses, obj_poses = run_full_inhand_og(desired_obj2left_se2, desired_obj2right_se2, left_pose0, right_pose0, object_pose0, rotation=70 * np.pi/180, rotate_steps=40, rotate_time=10.0, se2_time=10.0, back_time=10.0, fix_right=False)
-    ts, left_poses, right_poses, obj_poses = run_full_inhand(desired_obj2left_se2s, desired_obj2right_se2s, left_pose0, right_pose0, object_pose0, rotation= 00 * np.pi/180, rotate_steps=40, rotate_time=10.0, se2_time=10.0, back_time=10.0, fix_right=False)
+    ts, left_poses, right_poses, obj_poses = run_full_inhand(desired_obj2left_se2s, desired_obj2right_se2s, left_pose0, right_pose0, object_pose0, rotation= 60 * np.pi/180, rotate_steps=40, rotate_time=10.0, se2_time=10.0, back_time=10.0, fix_right=False)
     left_piecewise, right_piecewise, object_piecewise = piecewise_traj(ts, left_poses, right_poses, obj_poses)
     T = ts[-1]
     

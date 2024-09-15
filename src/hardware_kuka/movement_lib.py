@@ -25,7 +25,7 @@ import numpy as np
 
 import sys
 sys.path.append('..')
-from diagrams import create_hardware_diagram_plant_bimanual, create_visual_diagram
+from diagrams import create_hardware_diagram_plant_bimanual, create_hardware_diagram_plant_bimanual_nofake, create_visual_diagram
 from planning.ik_util import solveDualIK, inhand_rotate_poses, pause_for, piecewise_traj, solve_ik_inhand, inhand_rotate_arms, inhand_se2_arms
 from bimanual_systems import Wrench2Torque, ApplyForceCompensateGravity
 from planning.object_compensation import ApplyForce
@@ -34,7 +34,7 @@ from scipy.linalg import block_diag
 from camera import CameraManager
 
 def curr_joints(scenario_file = "../../config/bimanual_med_hardware.yaml"):
-    hardware_diagram, hardware_plant = create_hardware_diagram_plant_bimanual(scenario_filepath=scenario_file, meshcat=None, position_only=True)
+    hardware_diagram, hardware_plant = create_hardware_diagram_plant_bimanual_nofake(scenario_filepath=scenario_file, position_only=True)
     context = hardware_diagram.CreateDefaultContext()
     hardware_diagram.ExecuteInitializationEvents(context)
     curr_q_medusa = hardware_diagram.GetOutputPort("iiwa_medusa.position_measured").Eval(context)
@@ -43,7 +43,7 @@ def curr_joints(scenario_file = "../../config/bimanual_med_hardware.yaml"):
     return curr_q
 
 def curr_desired_joints(scenario_file = "../../config/bimanual_med_hardware.yaml"):
-    hardware_diagram, hardware_plant = create_hardware_diagram_plant_bimanual(scenario_filepath=scenario_file, meshcat=None, position_only=True)
+    hardware_diagram, hardware_plant = create_hardware_diagram_plant_bimanual_nofake(scenario_filepath=scenario_file, position_only=True)
     context = hardware_diagram.CreateDefaultContext()
     hardware_diagram.ExecuteInitializationEvents(context)
     curr_q_medusa = hardware_diagram.GetOutputPort("iiwa_medusa.position_commanded").Eval(context)
@@ -52,7 +52,7 @@ def curr_desired_joints(scenario_file = "../../config/bimanual_med_hardware.yaml
     return curr_q
 
 def curr_torque_commanded(scenario_file = "../../config/bimanual_med_hardware.yaml"):
-    hardware_diagram, hardware_plant = create_hardware_diagram_plant_bimanual(scenario_filepath=scenario_file, meshcat=None, position_only=False)
+    hardware_diagram, hardware_plant = create_hardware_diagram_plant_bimanual_nofake(scenario_filepath=scenario_file, position_only=False)
     context = hardware_diagram.CreateDefaultContext()
     hardware_diagram.ExecuteInitializationEvents(context)
     curr_torque_medusa = hardware_diagram.GetOutputPort("iiwa_medusa.torque_commanded").Eval(context)
@@ -61,12 +61,10 @@ def curr_torque_commanded(scenario_file = "../../config/bimanual_med_hardware.ya
     return curr_torque
 
 def goto_joints(joint_thanos, joint_medusa, endtime = 30.0, scenario_file = "../../config/bimanual_med_hardware.yaml", directives_file = "../../config/bimanual_med.yaml"):
-    meshcat = StartMeshcat()
-    
     root_builder = DiagramBuilder()
     
-    hardware_diagram, hardware_plant = create_hardware_diagram_plant_bimanual(scenario_filepath=scenario_file, meshcat=meshcat, position_only=True)
-    vis_diagram = create_visual_diagram(directives_filepath=directives_file, meshcat=meshcat, package_file="../../package.xml")
+    hardware_diagram, hardware_plant = create_hardware_diagram_plant_bimanual_nofake(scenario_filepath=scenario_file,  position_only=True)
+    # vis_diagram = create_visual_diagram(directives_filepath=directives_file, meshcat=meshcat, package_file="../../package.xml")
     
     hardware_block = root_builder.AddSystem(hardware_diagram)
     
@@ -87,11 +85,7 @@ def goto_joints(joint_thanos, joint_medusa, endtime = 30.0, scenario_file = "../
     traj_thanos_block = root_builder.AddSystem(TrajectorySource(traj_thanos))
     
     root_builder.Connect(traj_medusa_block.get_output_port(), hardware_block.GetInputPort("iiwa_medusa.position"))
-    root_builder.Connect(traj_medusa_block.get_output_port(), hardware_block.GetInputPort("iiwa_medusa_fake.position"))
-    
-    
     root_builder.Connect(traj_thanos_block.get_output_port(), hardware_block.GetInputPort("iiwa_thanos.position"))
-    root_builder.Connect(traj_thanos_block.get_output_port(), hardware_block.GetInputPort("iiwa_thanos_fake.position"))
 
     root_diagram = root_builder.Build()
     
@@ -101,11 +95,9 @@ def goto_joints(joint_thanos, joint_medusa, endtime = 30.0, scenario_file = "../
     simulator.AdvanceTo(endtime + 2.0)
     
 def goto_joints_torque(joint_thanos, joint_medusa, wrench_thanos, wrench_medusa, endtime = 30.0, scenario_file = "../../config/bimanual_med_hardware_impedance.yaml", directives_file = "../../config/bimanual_med.yaml"):
-    meshcat = StartMeshcat()
-    
     root_builder = DiagramBuilder()
-    hardware_diagram, hardware_plant = create_hardware_diagram_plant_bimanual(scenario_filepath=scenario_file, position_only=False, meshcat = meshcat)
-    vis_diagram = create_visual_diagram(directives_filepath=directives_file, package_file="../../package.xml", meshcat = meshcat)
+    hardware_diagram, hardware_plant = create_hardware_diagram_plant_bimanual_nofake(scenario_filepath=scenario_file, position_only=False)
+    # vis_diagram = create_visual_diagram(directives_filepath=directives_file, package_file="../../package.xml", meshcat = meshcat)
     
     hardware_block = root_builder.AddSystem(hardware_diagram)
     ## make a plan from current position to desired position
@@ -134,10 +126,8 @@ def goto_joints_torque(joint_thanos, joint_medusa, wrench_thanos, wrench_medusa,
     torque_demultiplexer_block = root_builder.AddSystem(Demultiplexer(14, 7))
 
     root_builder.Connect(traj_thanos_block.get_output_port(), hardware_block.GetInputPort("iiwa_thanos.position"))
-    root_builder.Connect(traj_thanos_block.get_output_port(), hardware_block.GetInputPort("iiwa_thanos_fake.position"))
     
     root_builder.Connect(traj_medusa_block.get_output_port(), hardware_block.GetInputPort("iiwa_medusa.position"))
-    root_builder.Connect(traj_medusa_block.get_output_port(), hardware_block.GetInputPort("iiwa_medusa_fake.position"))
 
     root_builder.Connect(hardware_block.GetOutputPort("iiwa_thanos.position_measured"), torque_block.GetInputPort("thanos_position"))
     root_builder.Connect(hardware_block.GetOutputPort("iiwa_medusa.position_measured"), torque_block.GetInputPort("medusa_position"))
@@ -208,11 +198,9 @@ class RotateWrench(LeafSystem):
         output.SetFromVector(medusa_wrench)
         
 def direct_joint_torque(joint_thanos, joint_medusa, wrench_thanos, wrench_medusa, endtime = 30.0, scenario_file = "../../config/bimanual_med_hardware_impedance.yaml", directives_file = "../../config/bimanual_med.yaml"):
-    meshcat = StartMeshcat()
-    
     root_builder = DiagramBuilder()
-    hardware_diagram, hardware_plant = create_hardware_diagram_plant_bimanual(scenario_filepath=scenario_file, position_only=False, meshcat = meshcat)
-    vis_diagram = create_visual_diagram(directives_filepath=directives_file, package_file="../../package.xml", meshcat = meshcat)
+    hardware_diagram, hardware_plant = create_hardware_diagram_plant_bimanual_nofake(scenario_filepath=scenario_file, position_only=False)
+    # vis_diagram = create_visual_diagram(directives_filepath=directives_file, package_file="../../package.xml", meshcat = meshcat)
     
     hardware_block = root_builder.AddSystem(hardware_diagram)
     traj_medusa_block = root_builder.AddSystem(ConstantVectorSource(joint_medusa))
@@ -228,10 +216,8 @@ def direct_joint_torque(joint_thanos, joint_medusa, wrench_thanos, wrench_medusa
     torque_demultiplexer_block = root_builder.AddSystem(Demultiplexer(14, 7))
 
     root_builder.Connect(traj_thanos_block.get_output_port(), hardware_block.GetInputPort("iiwa_thanos.position"))
-    root_builder.Connect(traj_thanos_block.get_output_port(), hardware_block.GetInputPort("iiwa_thanos_fake.position"))
     
     root_builder.Connect(traj_medusa_block.get_output_port(), hardware_block.GetInputPort("iiwa_medusa.position"))
-    root_builder.Connect(traj_medusa_block.get_output_port(), hardware_block.GetInputPort("iiwa_medusa_fake.position"))
 
     root_builder.Connect(hardware_block.GetOutputPort("iiwa_thanos.position_measured"), torque_block.GetInputPort("thanos_position"))
     root_builder.Connect(hardware_block.GetOutputPort("iiwa_medusa.position_measured"), torque_block.GetInputPort("medusa_position"))
@@ -275,11 +261,9 @@ def direct_joint_torque(joint_thanos, joint_medusa, wrench_thanos, wrench_medusa
     simulator.AdvanceTo(endtime + 1.0)    
 
 def follow_trajectory_apply_push(traj_thanos, traj_medusa, camera_manager: CameraManager, force = 30.0, object_kg = 0.5, feedforward_z_force = 0.0, endtime = 1e12, scenario_file = "../../config/bimanual_med_hardware_gamma.yaml", directives_file = "../../config/bimanual_med_gamma.yaml"):
-    meshcat = StartMeshcat()
-        
     root_builder = DiagramBuilder()
-    hardware_diagram, hardware_plant = create_hardware_diagram_plant_bimanual(scenario_filepath=scenario_file, position_only=False, meshcat = meshcat)
-    vis_diagram = create_visual_diagram(directives_filepath=directives_file, meshcat=meshcat, package_file="../../package.xml")
+    hardware_diagram, hardware_plant = create_hardware_diagram_plant_bimanual_nofake(scenario_filepath=scenario_file, position_only=False)
+    # vis_diagram = create_visual_diagram(directives_filepath=directives_file, meshcat=meshcat, package_file="../../package.xml")
     
     hardware_block = root_builder.AddSystem(hardware_diagram)
     # apply_torque_block = root_builder.AddSystem(ApplyForce(hardware_plant, object_kg = 1.0, force=force))
@@ -288,11 +272,9 @@ def follow_trajectory_apply_push(traj_thanos, traj_medusa, camera_manager: Camer
     
     traj_medusa_block = root_builder.AddSystem(TrajectorySource(traj_medusa))
     root_builder.Connect(traj_medusa_block.get_output_port(), hardware_block.GetInputPort("iiwa_medusa.position"))
-    root_builder.Connect(traj_medusa_block.get_output_port(), hardware_block.GetInputPort("iiwa_medusa_fake.position"))
     
     traj_thanos_block = root_builder.AddSystem(TrajectorySource(traj_thanos))
     root_builder.Connect(traj_thanos_block.get_output_port(), hardware_block.GetInputPort("iiwa_thanos.position"))
-    root_builder.Connect(traj_thanos_block.get_output_port(), hardware_block.GetInputPort("iiwa_thanos_fake.position"))
     
     root_builder.Connect(hardware_block.GetOutputPort("iiwa_thanos.position_measured"), apply_torque_block.GetInputPort("thanos_position"))
     root_builder.Connect(hardware_block.GetOutputPort("iiwa_medusa.position_measured"), apply_torque_block.GetInputPort("medusa_position"))
@@ -645,11 +627,9 @@ class HackyVectorSource(LeafSystem):
 
 def follow_traj_and_torque_gamma_se2(desired_se2, traj_thanos, traj_medusa, camera_manager: CameraManager, gamma_manager: GammaManager, force = 30.0, object_kg = 0.5, endtime = 1e12, scenario_file = "../../config/bimanual_med_hardware_gamma.yaml", directives_file = "../../config/bimanual_med_gamma.yaml", filter_vector_medusa = np.array([0.0, 0.0, 1.0, 1.0, 1.0, 0.0]), filter_vector_thanos = np.array([0.0, 0.0, 1.0, 1.0, 1.0, 0.0]), medusa=False):
     move_medusa = not medusa
-    meshcat = StartMeshcat()
-    
     root_builder = DiagramBuilder()
-    hardware_diagram, hardware_plant = create_hardware_diagram_plant_bimanual(scenario_filepath=scenario_file, position_only=False, meshcat = meshcat)
-    vis_diagram = create_visual_diagram(directives_filepath=directives_file, meshcat=meshcat, package_file="../../package.xml")
+    hardware_diagram, hardware_plant = create_hardware_diagram_plant_bimanual_nofake(scenario_filepath=scenario_file, position_only=False)
+    # vis_diagram = create_visual_diagram(directives_filepath=directives_file, meshcat=meshcat, package_file="../../package.xml")
     
     hardware_block = root_builder.AddSystem(hardware_diagram)
     
@@ -693,10 +673,8 @@ def follow_traj_and_torque_gamma_se2(desired_se2, traj_thanos, traj_medusa, came
     
     
     root_builder.Connect(traj_thanos_block.get_output_port(), hardware_block.GetInputPort("iiwa_thanos.position"))
-    root_builder.Connect(traj_thanos_block.get_output_port(), hardware_block.GetInputPort("iiwa_thanos_fake.position"))
     
     root_builder.Connect(traj_medusa_block.get_output_port(), hardware_block.GetInputPort("iiwa_medusa.position"))
-    root_builder.Connect(traj_medusa_block.get_output_port(), hardware_block.GetInputPort("iiwa_medusa_fake.position"))
     
     
     # connections for reactive torque
@@ -731,11 +709,9 @@ def follow_traj_and_torque_gamma_se2(desired_se2, traj_thanos, traj_medusa, came
     
 
 def follow_traj_and_torque_gamma(traj_thanos, traj_medusa, camera_manager: CameraManager, gamma_manager: GammaManager, force = 30.0, object_kg = 0.5, endtime = 1e12, scenario_file = "../../config/bimanual_med_hardware_gamma.yaml", directives_file = "../../config/bimanual_med_gamma.yaml", filter_vector_medusa = np.array([0.0, 0.0, 1.0, 1.0, 1.0, 0.0]), filter_vector_thanos = np.array([0.0, 0.0, 1.0, 1.0, 1.0, 0.0])):
-    meshcat = StartMeshcat()
-    
     root_builder = DiagramBuilder()
-    hardware_diagram, hardware_plant = create_hardware_diagram_plant_bimanual(scenario_filepath=scenario_file, position_only=False, meshcat = meshcat)
-    vis_diagram = create_visual_diagram(directives_filepath=directives_file, meshcat=meshcat, package_file="../../package.xml")
+    hardware_diagram, hardware_plant = create_hardware_diagram_plant_bimanual_nofake(scenario_filepath=scenario_file, position_only=False)
+    # vis_diagram = create_visual_diagram(directives_filepath=directives_file, meshcat=meshcat, package_file="../../package.xml")
     
     hardware_block = root_builder.AddSystem(hardware_diagram)
     
@@ -768,10 +744,8 @@ def follow_traj_and_torque_gamma(traj_thanos, traj_medusa, camera_manager: Camer
     root_builder.Connect(rotation_compensator_demu_block.get_output_port(1), adder_torque_medusa_block.get_input_port(2))
     
     root_builder.Connect(traj_thanos_block.get_output_port(), hardware_block.GetInputPort("iiwa_thanos.position"))
-    root_builder.Connect(traj_thanos_block.get_output_port(), hardware_block.GetInputPort("iiwa_thanos_fake.position"))
     
     root_builder.Connect(traj_medusa_block.get_output_port(), hardware_block.GetInputPort("iiwa_medusa.position"))
-    root_builder.Connect(traj_medusa_block.get_output_port(), hardware_block.GetInputPort("iiwa_medusa_fake.position"))
     
     
     # connections for reactive torque

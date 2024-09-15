@@ -78,12 +78,12 @@ def correct_medusa():
     
 
 def goto_joints(joint_thanos, joint_medusa, endtime = 30.0, scenario_file = "../../config/bimanual_med_hardware.yaml", directives_file = "../../config/bimanual_med.yaml"):
-    meshcat = StartMeshcat()
+    meshcat = None
     
     root_builder = DiagramBuilder()
     
     hardware_diagram, hardware_plant = create_hardware_diagram_plant_bimanual(scenario_filepath=scenario_file, meshcat=meshcat, position_only=True)
-    vis_diagram = create_visual_diagram(directives_filepath=directives_file, meshcat=meshcat, package_file="../../package.xml")
+    # vis_diagram = create_visual_diagram(directives_filepath=directives_file, meshcat=meshcat, package_file="../../package.xml")
     
     hardware_block = root_builder.AddSystem(hardware_diagram)
     
@@ -116,14 +116,14 @@ def goto_joints(joint_thanos, joint_medusa, endtime = 30.0, scenario_file = "../
     simulator.AdvanceTo(endtime + 2.0)
     
 def goto_joints_straight(joint_thanos, joint_medusa, endtime = 30.0):
-    meshcat = StartMeshcat()
+    meshcat = None
     scenario_file = "../../config/bimanual_med_hardware.yaml"
     directives_file = "../../config/bimanual_med.yaml"
     
     root_builder = DiagramBuilder()
     
     hardware_diagram, hardware_plant = create_hardware_diagram_plant_bimanual(scenario_filepath=scenario_file, meshcat=meshcat, position_only=True)
-    vis_diagram = create_visual_diagram(directives_filepath=directives_file, meshcat=meshcat, package_file="../../package.xml")
+    # vis_diagram = create_visual_diagram(directives_filepath=directives_file, meshcat=meshcat, package_file="../../package.xml")
     
     hardware_block = root_builder.AddSystem(hardware_diagram)
     
@@ -196,14 +196,14 @@ def generate_push_configuration(seed_q0, gap = 0.475, push_distance = 0.025):
     return new_joints
 
 def follow_trajectory(traj_thanos, traj_medusa, endtime = 1e12):
-    meshcat = StartMeshcat()
+    meshcat = None
     scenario_file = "../../config/bimanual_med_hardware.yaml"
     directives_file = "../../config/bimanual_med.yaml"
         
     root_builder = DiagramBuilder()
     
     hardware_diagram, hardware_plant = create_hardware_diagram_plant_bimanual(scenario_filepath=scenario_file, meshcat=meshcat, position_only=True)
-    vis_diagram = create_visual_diagram(directives_filepath=directives_file, meshcat=meshcat, package_file="../../package.xml")
+    # vis_diagram = create_visual_diagram(directives_filepath=directives_file, meshcat=meshcat, package_file="../../package.xml")
     
     hardware_block = root_builder.AddSystem(hardware_diagram)
     recorder = BenchmarkController(hardware_plant)
