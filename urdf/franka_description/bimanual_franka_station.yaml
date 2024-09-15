@@ -1,0 +1,29 @@
+# This is a simulation of bimanual franka setup with two franka robots.
+
+directives:
+
+# Add franka_left
+- add_model:
+    name: franka_left
+    file: package://drake/manipulation/models/franka_description/urdf/panda_arm.urdf
+
+
+- add_weld:
+    parent: world
+    child: franka_left::panda_link0
+
+# Add franka_right
+- add_model:
+    name: franka_right
+    file: package://drake/manipulation/models/franka_description/urdf/panda_arm.urdf
+
+- add_frame:
+    name: franka_right_origin
+    X_PF:
+      base_frame: world
+      rotation: !Rpy { deg: [0, 0, -90.0]}
+      translation: [0.2815, 0.4425, 0]
+
+- add_weld:
+    parent: franka_right_origin
+    child: franka_right::panda_link0
