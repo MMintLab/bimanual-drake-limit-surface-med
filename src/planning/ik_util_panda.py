@@ -85,68 +85,52 @@ def inhand_se2(desired_se2: np.ndarray, left_pose: RigidTransform, right_pose: R
     
     return obj2world_new, moving2world_new, still2world
 
-# def inhand_se2_dls(desired_se2: np.ndarray, left_pose: RigidTransform, right_pose: RigidTransform, object_pose: RigidTransform, left=True, kv=0.1, inverse=False, radius=0.05):
-#     # left => move the left hand
-#     # right => move the right hand
-    
-#     # desired_se2 is the desired pose of the object in the other hand
-#     # left => desired_se2 is obj2right pose
-#     # right => desired_se2 is obj2left pose
-    
-#     # get the current se2 of the object
-#     obj2world = object_pose
-#     left2world = left_pose
-#     right2world = right_pose
-    
-#     still2world = right2world if left else left2world
-#     moving2world = left2world if left else right2world
-    
-#     moving2obj = obj2world.inverse() @ moving2world
-    
-#     # obj2moving stays constant
-#     # obj2still changes to desired_se2
-#     obj2still = still2world.inverse() @ obj2world
-#     obj2still_se2 = get_se2_vector(obj2still)
-#     obj2still_se2_pose = get_se2_pose(obj2still_se2)
+def run_full_inhand(desired_obj2left_se2s: List[np.ndarray], desired_obj2right_se2s: List[np.ndarray], left_pose0: RigidTransform, right_pose0: RigidTransform, object_pose0: RigidTransform, rotation: float = np.pi/3, fix_right=False, rotate_steps=10, rotate_time=10.0, se2_time = 10.0, back_time=10.0):
+    left_poses = [left_pose0]
+    right_poses = [right_pose0]
+    obj_poses = [object_pose0]
+    ts = [0.0]
     
     
-#     C1 = 1
-#     C2 = 1
-#     steps = 10
-#     initial_pose_dls = obj2still_se2.reshape((3,1))
-#     goal_pose_dls = desired_se2.reshape((3,1))
-#     q_sol, _, _ = limit_surface_plan(initial_pose_dls, goal_pose_dls, kv, C1, C2, radius=radius, steps=steps, inverse=inverse)
-    
-#     #NOTE: plotting DLS output
-#     import matplotlib.pyplot as plt
-#     fig = plt.figure()
-#     ax = fig.add_subplot(1,1,1)
-#     ax.plot(q_sol[0,:], q_sol[1,:], 'b')
-#     ax.quiver(*q_sol[:2,:], np.cos(q_sol[-1,:]), np.sin(q_sol[-1,:]), color='r', scale=20)
-#     ax.set_xlabel('x/m')
-#     ax.set_ylabel('y/m')
-#     ax.set_title('DLS Planner Result')
-#     #plot circle of radius
-#     thetas = np.linspace(0,2*np.pi,100)
-#     x = radius*np.cos(thetas)
-#     y = radius*np.sin(thetas)
-#     ax.plot(x,y,'g--')
-#     plt.show()
-    
-#     obj2world_news = []
-#     moving2world_news = []
-#     still2world_news = []
-#     for i in range(steps):
-#         obj2still_new_se2_pose = get_se2_pose(q_sol[:,i])
-#         obj2still_new = obj2still_new_se2_pose @ obj2still_se2_pose.inverse() @ obj2still
-#         obj2world_new = still2world @ obj2still_new
-#         moving2world_new = obj2world_new @ moving2obj
+    for desired_obj2left_se2, desired_obj2right_se2 in zip(desired_obj2left_se2s, desired_obj2right_se2s):
+        ts, left_poses, right_poses, obj_poses = pause_for(1.0, ts, left_poses, right_poses, obj_poses)
         
-#         obj2world_news.append(obj2world_new)
-#         moving2world_news.append(moving2world_new)
-#         still2world_news.append(still2world)
-    
-#     return obj2world_news, moving2world_news, still2world_news
+        # rotate left
+        ts, left_poses, right_poses, obj_poses = inhand_rotate_poses(rotation, object_pose0, ts, left_poses, right_poses, obj_poses, steps=rotate_steps, rotate_time=rotate_time)
+        ts, left_poses, right_poses, obj_poses = pause_for(2.00, ts, left_poses, right_poses, obj_poses)
+        
+        # move left
+        ts, left_poses, right_poses, obj_poses = inhand_se2_poses(desired_obj2left_se2, ts, left_poses, right_poses, obj_poses, left=False, se2_time=se2_time)
+        ts, left_poses, right_poses, obj_poses = pause_for(2.0, ts, left_poses, right_poses, obj_poses)
+        
+        #rotate back
+        ts, left_poses, right_poses, obj_poses = inhand_rotate_poses(-rotation, object_pose0, ts, left_poses, right_poses, obj_poses, steps=rotate_steps, rotate_time=rotate_time)
+        ts, left_poses, right_poses, obj_poses = pause_for(2.0, ts, left_poses, right_poses, obj_poses)
+        
+        # move back (original object pose is the reference)
+        ts, left_poses, right_poses, obj_poses = inhand_back_poses(ts, left_poses, right_poses, obj_poses, object_pose0, back_time=back_time)
+        ts, left_poses, right_poses, obj_poses = pause_for(2.0, ts, left_poses, right_poses, obj_poses)
+        
+        # rotate right
+        ts, left_poses, right_poses, obj_poses = inhand_rotate_poses(-rotation, object_pose0, ts, left_poses, right_poses, obj_poses, steps=rotate_steps, rotate_time=rotate_time)
+        ts, left_poses, right_poses, obj_poses = pause_for(2.00, ts, left_poses, right_poses, obj_poses)
+        
+        # move right
+        ts, left_poses, right_poses, obj_poses = inhand_se2_poses(desired_obj2right_se2, ts, left_poses, right_poses, obj_poses, left=True, se2_time=se2_time)
+        ts, left_poses, right_poses, obj_poses = pause_for(2.0, ts, left_poses, right_poses, obj_poses)
+        
+        #rotate back
+        ts, left_poses, right_poses, obj_poses = inhand_rotate_poses(rotation, object_pose0, ts, left_poses, right_poses, obj_poses, steps=rotate_steps, rotate_time=rotate_time)
+        ts, left_poses, right_poses, obj_poses = pause_for(2.0, ts, left_poses, right_poses, obj_poses)
+        
+        # move back (original object pose is the reference)
+        ts, left_poses, right_poses, obj_poses = inhand_back_poses(ts, left_poses, right_poses, obj_poses, object_pose0, back_time=back_time)
+        ts, left_poses, right_poses, obj_poses = pause_for(2.0, ts, left_poses, right_poses, obj_poses)
+    if fix_right:    
+        # fix the right pose to be rotated by pi/2 on y-axis
+        right_poses = [right_pose @ RigidTransform(RollPitchYaw(0.0,np.pi,0.0), np.zeros(3)) for right_pose in right_poses]
+        
+    return ts, left_poses, right_poses, obj_poses
 
 def inhand_move_back(left2world: RigidTransform, right2world: RigidTransform, obj2world: RigidTransform, reference_pose: RigidTransform):
     #get left2obj and right2obj
