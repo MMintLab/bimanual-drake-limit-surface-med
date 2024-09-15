@@ -251,7 +251,7 @@ def run_full_inhand_og(desired_obj2left_se2: np.ndarray, desired_obj2right_se2: 
     
     return ts, left_poses, right_poses, obj_poses
 
-def run_full_inhand(desired_obj2left_se2s: list[np.ndarray], desired_obj2right_se2s: list[np.ndarray], left_pose0: RigidTransform, right_pose0: RigidTransform, object_pose0: RigidTransform, rotation: float = np.pi/3, fix_right=False, rotate_steps=10, rotate_time=10.0, se2_time = 10.0, back_time=10.0):
+def run_full_inhand(desired_obj2left_se2s: List[np.ndarray], desired_obj2right_se2s: List[np.ndarray], left_pose0: RigidTransform, right_pose0: RigidTransform, object_pose0: RigidTransform, rotation: float = np.pi/3, fix_right=False, rotate_steps=10, rotate_time=10.0, se2_time = 10.0, back_time=10.0):
     left_poses = [left_pose0]
     right_poses = [right_pose0]
     obj_poses = [object_pose0]

@@ -25,7 +25,7 @@ from pydrake.multibody.plant import ContactResults
 from pydrake.multibody.plant import MultibodyPlant, CoulombFriction
 from pydrake.multibody.meshcat import ContactVisualizer, ContactVisualizerParams
 import numpy as np
-import open3d as o3d
+# import open3d as o3d
 from collections import defaultdict
 
 def AddContactModel(plant: MultibodyPlant, halfspace_slab=0.0, mu_static=0.0, **kwargs):
