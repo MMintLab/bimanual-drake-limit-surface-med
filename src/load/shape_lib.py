@@ -1,5 +1,5 @@
 from pydrake.multibody.plant import MultibodyPlant
-from pydrake.geometry import ProximityProperties, Box, HalfSpace
+from pydrake.geometry import ProximityProperties, Box, HalfSpace, Sphere
 from pydrake.multibody.tree import RigidBody, SpatialInertia, UnitInertia
 from pydrake.math import RigidTransform
 import numpy as np
@@ -41,10 +41,38 @@ def AddBox(plant: MultibodyPlant, name: str, lwh=(1.0,1.0,1.0), mass=1.0, mu = 1
     box = Box(*lwh)
     
     dissip = 0
-    hydro_mod = 5e4
-    # hydro_mod = 1e6
+    # hydro_mod = 5e4
+    hydro_mod = 1e6
 
     box_props = AddContactModel(plant, mu_static=mu, hydro_mod= hydro_mod, dissip = dissip, res_hint=0.01)
     # box_props = AddContactModel(plant, mu_static=mu, res_hint=0.01)
     RegisterShape(plant, name, box_body, box, box_props, color)
     return box_instance
+def AddSphere(plant: MultibodyPlant, name: str, radius=1.0, mass=1.0, mu = 1):
+    sphere_instance = plant.AddModelInstance(name)
+    
+    sphere_body = plant.AddRigidBody(f"{name}_body",
+                sphere_instance,
+                SpatialInertia(mass=mass,
+                               p_PScm_E=np.array([0.0,0.0,0.0]),
+                               G_SP_E=UnitInertia.SolidSphere(radius)
+                               )
+                )
+    sphere = Sphere(radius)
+    
+    dissip = 0
+    hydro_mod = 1e6
+    
+    sphere_props = AddContactModel(plant, mu_static=mu, hydro_mod= hydro_mod, dissip = dissip, res_hint=0.04)
+    RegisterShape(plant, name, sphere_body, sphere, sphere_props)
+    return sphere_instance
+
+def AddCustomObject(plant: MultibodyPlant, name: str, largest_width: float, depth: float,smaller_percent: float, mass: float, mu_smaller = 1.0, mu_bigger=1.0):
+    center_temp = AddSphere(plant, f"{name}", radius=depth/4, mass=1e-8)
+    larger_object = AddBox(plant, f"{name}_2", lwh=(largest_width, largest_width, depth), mass=mass, color=[0,0,1,0.3], mu=mu_bigger)
+    smaller_object = AddBox(plant, f"{name}_3", lwh=(largest_width*smaller_percent, largest_width*smaller_percent, depth), mass=mass, color=[1,0,0,0.3], mu=mu_smaller)
+    
+    plant.WeldFrames(plant.GetFrameByName(f"{name}_body"), plant.GetFrameByName(f"{name}_2_body"), RigidTransform([0,0,-depth/2]))
+    plant.WeldFrames(plant.GetFrameByName(f"{name}_body"), plant.GetFrameByName(f"{name}_3_body"), RigidTransform([0,0,depth/2]))
+    
+    return center_temp, larger_object, smaller_object

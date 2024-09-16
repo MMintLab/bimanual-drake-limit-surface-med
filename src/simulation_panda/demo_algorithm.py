@@ -12,14 +12,13 @@ from pydrake.systems.controllers import InverseDynamicsController
 from pydrake.systems.framework import LeafSystem
 import load.shape_lib as shape_lib
 from pydrake.systems.primitives import Adder
-from pydrake.all import PiecewisePolynomial
+from pydrake.all import PiecewisePolynomial, AddMultibodyPlant, MultibodyPlantConfig
 
-from planning.ik_util_panda import solve_ik_inhand, piecewise_joints, run_full_inhand_og, piecewise_traj, run_full_inhand_naive
+from planning.ik_util_panda import solve_ik_inhand, piecewise_joints, run_full_inhand, piecewise_traj
 from record_lib import RecordPoses, ContactForceReporter
 from arm_utils import ApplyForce, CombineArmStates
-from load.panda_load import load_bimanual_setup
-
-
+from load.panda_load import load_bimanual_setup, load_bimanual_custom
+from planning.drake_inhand_planner2 import DualLimitSurfaceParams, inhand_planner
 
 class IIwaFollower(LeafSystem):
     def __init__(self, qs_piecewise: PiecewisePolynomial):
@@ -34,7 +33,7 @@ class IIwaFollower(LeafSystem):
         output.SetFromVector(qd)
 
 class ArmStation(WorkStation):
-    def __init__(self, use_custom_object = False, rotation = 70 *np.pi/180, target_se2_left = np.array([0,0,0]), target_se2_right = np.array([0,0,0])):
+    def __init__(self, use_custom_object = False, rotation = 70 *np.pi/180, target_se2_left = np.array([0,0,0]), target_se2_right = np.array([0,0,0]), horizon = 7):
         WorkStation.__init__(self, "hydroelastic_with_fallback", multibody_dt=1e-3,penetration_allowance=1e-3,visual=True)
         
         self.seed_q0 = np.array([-0.41819804, -0.3893826, 0.1001545, -2.50638261, 1.81897449, 1.8743886, -2.15126654, 
@@ -48,6 +47,8 @@ class ArmStation(WorkStation):
         self.use_custom_object = use_custom_object
         self.rotation = rotation
         
+        self.T = 5.0
+        self.horizon = horizon
     def setup_simulate(self, builder: DiagramBuilder, plant: MultibodyPlant, scene_graph):
         plant.mutable_gravity_field().set_gravity_vector([0, 0, -9.83])
         
@@ -63,9 +64,29 @@ class ArmStation(WorkStation):
             obj_mass = 0.3
             self.object = shape_lib.AddBox(plant, "object", lwh=(self.box_width*8, self.box_width*8,self.box_width), mass=obj_mass, mu=1.0, color=[0,0,1,0.3])
             
+        dls_params = DualLimitSurfaceParams(mu_A = 1.0, r_A = self.box_width, N_A = 12.0, mu_B = 1.0, r_B = self.box_width, N_B = 12.0)
+        horizon = self.horizon
         
-        # self.object = shape_lib.AddBox(plant, "object", lwh=(0.25, 0.25,self.box_width), mass=obj_mass, mu=2.0, color=[0,0,1,0.3])
+        current_obj2left_se2 = np.array([0,0,0])
+        current_obj2right_se2 = np.array([0,0,0])
+        desired_obj2left_se2, desired_obj2right_se2 = self.target_se2_left, self.target_se2_right
         
+        obj2left, obj2right, vs = inhand_planner(current_obj2left_se2, current_obj2right_se2, desired_obj2left_se2, desired_obj2right_se2, dls_params, steps = horizon, angle = 60.0, palm_radius=0.035, kv = 0.5)
+        
+        print(np.round(desired_obj2left_se2 - obj2left[:,-1],4))
+        print(np.round(desired_obj2right_se2 - obj2right[:,-1],4))
+        
+        print(np.round(obj2left,4))
+        print(np.round(obj2right,4))
+        
+        desired_obj2left_se2s = []
+        desired_obj2right_se2s = []
+        for i in range(1,horizon):
+            if i % 2 == 1:
+                desired_obj2left_se2s.append(obj2left[:,i])
+            else:
+                desired_obj2right_se2s.append(obj2right[:,i] * np.array([-1,1,-1]))
+            
         #setup ground
         shape_lib.AddGround(plant)
         
@@ -73,20 +94,32 @@ class ArmStation(WorkStation):
         load_bimanual_setup(plant, scene_graph)
         
         #setup virtual arms
-        plant_arms = MultibodyPlant(1e-3) # time step
-        load_bimanual_setup(plant_arms)
+        
+        builder_dead = DiagramBuilder()
+        config = MultibodyPlantConfig()
+        plant_arms, scene_graph_arms = AddMultibodyPlant(config, builder_dead)
+        load_bimanual_custom(plant_arms, scene_graph_arms)
+        diagram = builder_dead.Build()
+        diagram_context = diagram.CreateDefaultContext()
+        plant_arm_context = plant_arms.GetMyContextFromRoot(diagram_context)
+        
+        plant_arms_arms = MultibodyPlant(1e-3)
+        load_bimanual_setup(plant_arms_arms)
+        
         
         # generate inhand 3d pose trajectory
         object_pose0 = self.object_pose
         left_pose0 = RigidTransform(object_pose0.rotation().ToQuaternion(), object_pose0.translation() + object_pose0.rotation().matrix() @ np.array([0,0,-self.box_width/2.0 - finger_length/2.0]))
         right_pose0 = RigidTransform(object_pose0.rotation().ToQuaternion(), object_pose0.translation() + object_pose0.rotation().matrix() @ np.array([0,0,self.box_width/2.0 + finger_length/2.0]))
-        ts, left_poses, right_poses, obj_poses = run_full_inhand_naive(self.target_se2_left, self.target_se2_right, left_pose0, right_pose0, object_pose0, rotation = self.rotation)
+        
+        ts, left_poses, right_poses, obj_poses = run_full_inhand(desired_obj2left_se2s, desired_obj2right_se2s, left_pose0, right_pose0, object_pose0, rotation= (90-self.rotation) * np.pi/180, rotate_steps=40, rotate_time=1.0, se2_time=1.0, back_time=1.0, fix_right=False)
         left_piecewise, right_piecewise, object_piecewise = piecewise_traj(ts, left_poses, right_poses, obj_poses)
         # then solve ik for joint trajectory
         T = ts[-1]
+        self.runtime = T + 5.0
         print("T: ", T)
         ts = np.linspace(0, T, 1_000)
-        qs = solve_ik_inhand(plant_arms, ts, left_piecewise, right_piecewise, "left_finger", "right_finger", self.seed_q0)
+        qs = solve_ik_inhand(plant_arms, plant_arm_context, ts, left_piecewise, right_piecewise, "left_finger", "right_finger", self.seed_q0)
         q_piecewise = piecewise_joints(ts, qs)
         
         
@@ -94,9 +127,9 @@ class ArmStation(WorkStation):
         kp = 800*np.ones(num_franka_joints)
         ki = 1*np.ones(num_franka_joints)
         kd = 4*np.sqrt(kp)
-        controller_block = builder.AddSystem(InverseDynamicsController(plant_arms, kp, ki, kd, False))
+        controller_block = builder.AddSystem(InverseDynamicsController(plant_arms_arms, kp, ki, kd, False))
         
-        feedforward_dual_block = builder.AddSystem(ApplyForce(plant_arms, obj_mass, force=20.0))
+        feedforward_dual_block = builder.AddSystem(ApplyForce(plant_arms, obj_mass, force=12.0))
         adder_torque_block = builder.AddSystem(Adder(2, 14))
         arm_states_block = builder.AddSystem(CombineArmStates())
     
@@ -142,16 +175,22 @@ class ArmStation(WorkStation):
         plant.SetFreeBodyPose(plant_context, plant.GetBodyByName("object_body"), self.object_pose)
         
 if __name__ == '__main__':
-    ANGLES = np.array([0, 20, 30, 40, 60]) * np.pi/180
+    ANGLES = np.array([20, 30, 45, 60])
     PATHS = [
         (np.array([0.03,0,np.pi/4]), np.array([0.03,0,np.pi/4])),
-        (np.array([0.03,0,0]), np.array([0.03,0,0])),
-        (np.array([0.03,0,0]), np.array([0.03,0,0])),
-        (np.array([0.03,0,0]), np.array([0.03,0,0])),
+        (np.array([-0.03,0,0]), np.array([0.03,0,0])),
+        (np.array([0.03,0,0]), np.array([-0.03,0,0])),
+        (np.array([0.00,0,np.pi/2]), np.array([0.00,0,np.pi/2])),
     ]
     path_idx = 0
     angles_idx = 0
-    test = ArmStation(use_custom_object=False, rotation=ANGLES[angles_idx], target_se2_left=PATHS[path_idx][0], target_se2_right=PATHS[path_idx][1])
+    
+    if path_idx == 0 or path_idx == 2:
+        horizon = 3
+    else:
+        horizon = 3
+    
+    test = ArmStation(use_custom_object=False, rotation=ANGLES[angles_idx], target_se2_left=PATHS[path_idx][0], target_se2_right=PATHS[path_idx][1], horizon=horizon)
     test.run(1e4)
     
     object2left_data = test.pub.object2left_data

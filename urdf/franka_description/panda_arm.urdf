@@ -17,90 +17,6 @@
         <mesh filename="package://drake_models/franka_description/meshes/visual/link0.obj"/>
       </geometry>
     </visual>
-    <collision>
-      <origin rpy="0 0 0" xyz="0.02 0.0 0.04"/>
-      <geometry>
-        <sphere radius="0.06"/>
-      </geometry>
-    </collision>
-    <collision>
-      <origin rpy="0 0 0" xyz="0.01 0.05 0.06"/>
-      <geometry>
-        <sphere radius="0.06"/>
-      </geometry>
-    </collision>
-    <collision>
-      <origin rpy="0 0 0" xyz="0.01 -0.05 0.06"/>
-      <geometry>
-        <sphere radius="0.06"/>
-      </geometry>
-    </collision>
-    <collision>
-      <origin rpy="0 0 0" xyz="-0.06 0.0 0.06"/>
-      <geometry>
-        <sphere radius="0.06"/>
-      </geometry>
-    </collision>
-    <collision>
-      <origin rpy="0 0 0" xyz="-0.06 0.05 0.06"/>
-      <geometry>
-        <sphere radius="0.06"/>
-      </geometry>
-    </collision>
-    <collision>
-      <origin rpy="0 0 0" xyz="-0.03 0.05 0.06"/>
-      <geometry>
-        <sphere radius="0.06"/>
-      </geometry>
-    </collision>
-    <collision>
-      <origin rpy="0 0 0" xyz="-0.03 -0.05 0.06"/>
-      <geometry>
-        <sphere radius="0.06"/>
-      </geometry>
-    </collision>
-    <collision>
-      <origin rpy="0 0 0" xyz="-0.06 -0.05 0.06"/>
-      <geometry>
-        <sphere radius="0.06"/>
-      </geometry>
-    </collision>
-    <collision>
-      <origin rpy="0 0 0" xyz="-0.09 -0.05 0.06"/>
-      <geometry>
-        <sphere radius="0.06"/>
-      </geometry>
-    </collision>
-    <collision>
-      <origin rpy="0 0 0" xyz="-0.09 0.0 0.06"/>
-      <geometry>
-        <sphere radius="0.06"/>
-      </geometry>
-    </collision>
-    <collision>
-      <origin rpy="0 0 0" xyz="-0.09 0.05 0.06"/>
-      <geometry>
-        <sphere radius="0.06"/>
-      </geometry>
-    </collision>
-    <collision>
-      <origin rpy="0 0 0" xyz="-0.12 0.0 0.06"/>
-      <geometry>
-        <sphere radius="0.06"/>
-      </geometry>
-    </collision>
-    <collision>
-      <origin rpy="0 0 0" xyz="0.0 0.0 0.113"/>
-      <geometry>
-        <sphere radius="0.06"/>
-      </geometry>
-    </collision>
-    <collision>
-      <origin rpy="0 0 0" xyz="0.0 0.0 0.083"/>
-      <geometry>
-        <sphere radius="0.06"/>
-      </geometry>
-    </collision>
   </link>
   <link name="panda_link1">
     <inertial>
@@ -114,42 +30,6 @@
         <mesh filename="package://drake_models/franka_description/meshes/visual/link1.obj"/>
       </geometry>
     </visual>
-    <collision>
-      <origin rpy="0 0 0" xyz="0.0 0.0 -0.13"/>
-      <geometry>
-        <sphere radius="0.06"/>
-      </geometry>
-    </collision>
-    <collision>
-      <origin rpy="0 0 0" xyz="0.0 0.0 -0.16"/>
-      <geometry>
-        <sphere radius="0.06"/>
-      </geometry>
-    </collision>
-    <collision>
-      <origin rpy="0 0 0" xyz="0.0 0.0 -0.19"/>
-      <geometry>
-        <sphere radius="0.06"/>
-      </geometry>
-    </collision>
-    <collision>
-      <origin rpy="0 0 0" xyz="0.0 -0.04 -0.06"/>
-      <geometry>
-        <sphere radius="0.06"/>
-      </geometry>
-    </collision>
-    <collision>
-      <origin rpy="0 0 0" xyz="0.0 -0.0750 -0.0"/>
-      <geometry>
-        <sphere radius="0.06"/>
-      </geometry>
-    </collision>
-    <collision>
-      <origin rpy="0 0 0" xyz="0.0 -0.0350 -0.0"/>
-      <geometry>
-        <sphere radius="0.06"/>
-      </geometry>
-    </collision>
   </link>
   <joint name="panda_joint1" type="revolute">
     <origin rpy="0 0 0" xyz="0 0 0.333"/>
@@ -170,42 +50,6 @@
         <mesh filename="package://drake_models/franka_description/meshes/visual/link2.obj"/>
       </geometry>
     </visual>
-    <collision>
-      <origin rpy="0 0 0" xyz="0.0 0.0 0.0"/>
-      <geometry>
-        <sphere radius="0.06"/>
-      </geometry>
-    </collision>
-    <collision>
-      <origin rpy="0 0 0" xyz="0.0 0.0 0.035"/>
-      <geometry>
-        <sphere radius="0.06"/>
-      </geometry>
-    </collision>
-    <collision>
-      <origin rpy="0 0 0" xyz="0.0 0.0 0.075"/>
-      <geometry>
-        <sphere radius="0.06"/>
-      </geometry>
-    </collision>
-    <collision>
-      <origin rpy="0 0 0" xyz="0.0 -0.1710 0.0"/>
-      <geometry>
-        <sphere radius="0.06"/>
-      </geometry>
-    </collision>
-    <collision>
-      <origin rpy="0 0 0" xyz="0.0 -0.1360 0.0"/>
-      <geometry>
-        <sphere radius="0.06"/>
-      </geometry>
-    </collision>
-    <collision>
-      <origin rpy="0 0 0" xyz="0.0 -0.070 0.040"/>
-      <geometry>
-        <sphere radius="0.06"/>
-      </geometry>
-    </collision>
   </link>
   <joint name="panda_joint2" type="revolute">
     <origin rpy="-1.57079632679 0 0" xyz="0 0 0"/>
@@ -226,36 +70,6 @@
         <mesh filename="package://drake_models/franka_description/meshes/visual/link3.obj"/>
       </geometry>
     </visual>
-    <collision>
-      <origin rpy="0 0 0" xyz="0.0 0.0 -0.11"/>
-      <geometry>
-        <sphere radius="0.06"/>
-      </geometry>
-    </collision>
-    <collision>
-      <origin rpy="0 0 0" xyz="0.0 0.0 -0.07"/>
-      <geometry>
-        <sphere radius="0.06"/>
-      </geometry>
-    </collision>
-    <collision>
-      <origin rpy="0 0 0" xyz="0.0825 0.03 -0.0"/>
-      <geometry>
-        <sphere radius="0.06"/>
-      </geometry>
-    </collision>
-    <collision>
-      <origin rpy="0 0 0" xyz="0.0825 0.06 -0.0"/>
-      <geometry>
-        <sphere radius="0.06"/>
-      </geometry>
-    </collision>
-    <collision>
-      <origin rpy="0 0 0" xyz="0.04 0.03 -0.03"/>
-      <geometry>
-        <sphere radius="0.06"/>
-      </geometry>
-    </collision>
   </link>
   <joint name="panda_joint3" type="revolute">
     <origin rpy="1.57079632679 0 0" xyz="0 -0.316 0"/>
@@ -276,48 +90,6 @@
         <mesh filename="package://drake_models/franka_description/meshes/visual/link4.obj"/>
       </geometry>
     </visual>
-    <collision>
-      <origin rpy="0 0 0" xyz="0.0 0.0 0.06"/>
-      <geometry>
-        <sphere radius="0.06"/>
-      </geometry>
-    </collision>
-    <collision>
-      <origin rpy="0 0 0" xyz="0.0 0.0 0.03"/>
-      <geometry>
-        <sphere radius="0.06"/>
-      </geometry>
-    </collision>
-    <collision>
-      <origin rpy="0 0 0" xyz="-0.0350 0.03 0.04"/>
-      <geometry>
-        <sphere radius="0.05"/>
-      </geometry>
-    </collision>
-    <collision>
-      <origin rpy="0 0 0" xyz="-0.05 0.04 0.01"/>
-      <geometry>
-        <sphere radius="0.055"/>
-      </geometry>
-    </collision>
-    <collision>
-      <origin rpy="0 0 0" xyz="0.0 0.0 0.0"/>
-      <geometry>
-        <sphere radius="0.06"/>
-      </geometry>
-    </collision>
-    <collision>
-      <origin rpy="0 0 0" xyz="-0.0825 0.0640 -0.0"/>
-      <geometry>
-        <sphere radius="0.06"/>
-      </geometry>
-    </collision>
-    <collision>
-      <origin rpy="0 0 0" xyz="-0.0825 0.1040 -0.0"/>
-      <geometry>
-        <sphere radius="0.06"/>
-      </geometry>
-    </collision>
   </link>
   <joint name="panda_joint4" type="revolute">
     <origin rpy="1.57079632679 0 0" xyz="0.0825 0 0"/>
@@ -338,78 +110,6 @@
         <mesh filename="package://drake_models/franka_description/meshes/visual/link5.obj"/>
       </geometry>
     </visual>
-    <collision>
-      <origin rpy="0 0 0" xyz="0.0 0.0 -0.24"/>
-      <geometry>
-        <sphere radius="0.06"/>
-      </geometry>
-    </collision>
-    <collision>
-      <origin rpy="0 0 0" xyz="0.0 0.0 -0.21"/>
-      <geometry>
-        <sphere radius="0.06"/>
-      </geometry>
-    </collision>
-    <collision>
-      <origin rpy="0 0 0" xyz="0.0 0.09 -0.055"/>
-      <geometry>
-        <sphere radius="0.035"/>
-      </geometry>
-    </collision>
-    <collision>
-      <origin rpy="0 0 0" xyz="0.0 0.0850 -0.08"/>
-      <geometry>
-        <sphere radius="0.035"/>
-      </geometry>
-    </collision>
-    <collision>
-      <origin rpy="0 0 0" xyz="0.0 0.0850 -0.11"/>
-      <geometry>
-        <sphere radius="0.035"/>
-      </geometry>
-    </collision>
-    <collision>
-      <origin rpy="0 0 0" xyz="0.0 0.08 -0.13"/>
-      <geometry>
-        <sphere radius="0.035"/>
-      </geometry>
-    </collision>
-    <collision>
-      <origin rpy="0 0 0" xyz="0.0 0.08 -0.15"/>
-      <geometry>
-        <sphere radius="0.035"/>
-      </geometry>
-    </collision>
-    <collision>
-      <origin rpy="0 0 0" xyz="0.0 0.07 -0.16"/>
-      <geometry>
-        <sphere radius="0.04"/>
-      </geometry>
-    </collision>
-    <collision>
-      <origin rpy="0 0 0" xyz="0.0 0.08 -0.02"/>
-      <geometry>
-        <sphere radius="0.05"/>
-      </geometry>
-    </collision>
-    <collision>
-      <origin rpy="0 0 0" xyz="0.0 0.08 -0.0"/>
-      <geometry>
-        <sphere radius="0.055"/>
-      </geometry>
-    </collision>
-    <collision>
-      <origin rpy="0 0 0" xyz="0.0 0.05 -0.20"/>
-      <geometry>
-        <sphere radius="0.055"/>
-      </geometry>
-    </collision>
-    <collision>
-      <origin rpy="0 0 0" xyz="0.0 0.07 -0.0"/>
-      <geometry>
-        <sphere radius="0.06"/>
-      </geometry>
-    </collision>
   </link>
   <joint name="panda_joint5" type="revolute">
     <origin rpy="-1.57079632679 0 0" xyz="-0.0825 0.384 0"/>
@@ -430,36 +130,6 @@
         <mesh filename="package://drake_models/franka_description/meshes/visual/link6.obj"/>
       </geometry>
     </visual>
-    <collision>
-      <origin rpy="0 0 0" xyz="0.08 0.03 0.0"/>
-      <geometry>
-        <sphere radius="0.06"/>
-      </geometry>
-    </collision>
-    <collision>
-      <origin rpy="0 0 0" xyz="0.04 0.01 0.0"/>
-      <geometry>
-        <sphere radius="0.06"/>
-      </geometry>
-    </collision>
-    <collision>
-      <origin rpy="0 0 0" xyz="0.04 0.0 0.0"/>
-      <geometry>
-        <sphere radius="0.06"/>
-      </geometry>
-    </collision>
-    <collision>
-      <origin rpy="0 0 0" xyz="0.0 0.0 0.01"/>
-      <geometry>
-        <sphere radius="0.06"/>
-      </geometry>
-    </collision>
-    <collision>
-      <origin rpy="0 0 0" xyz="0.0 0.0 -0.03"/>
-      <geometry>
-        <sphere radius="0.05"/>
-      </geometry>
-    </collision>
   </link>
   <joint name="panda_joint6" type="revolute">
     <origin rpy="1.57079632679 0 0" xyz="0 0 0"/>
@@ -480,18 +150,6 @@
         <mesh filename="package://drake_models/franka_description/meshes/visual/link7.obj"/>
       </geometry>
     </visual>
-    <collision>
-      <origin rpy="0 0 0" xyz="0 0 0.06"/>
-      <geometry>
-        <sphere radius="0.06"/>
-      </geometry>
-    </collision>
-    <collision>
-      <origin rpy="0 0 0" xyz="0 0 0.01"/>
-      <geometry>
-        <sphere radius="0.05"/>
-      </geometry>
-    </collision>
   </link>
   <joint name="panda_joint7" type="revolute">
     <origin rpy="1.57079632679 0 0" xyz="0.088 0 0"/>
@@ -501,12 +159,6 @@
     <limit effort="12" lower="-2.8973" upper="2.8973" velocity="2.610" drake:acceleration="20.0"/>
   </joint>
   <link name="panda_link8">
-    <collision>
-      <origin rpy="0 0 0" xyz="0.042 0.042 -0.02"/>
-      <geometry>
-        <sphere radius="0.04"/>
-      </geometry>
-    </collision>
   </link>
   <joint name="panda_joint8" type="fixed">
     <origin rpy="0 0 0" xyz="0 0 0.107"/>
@@ -597,14 +249,4 @@
       <drake:rotor_inertia value="0.0000205544064" />
     </actuator>
   </transmission>
-  <drake:collision_filter_group name="group_link57">
-    <drake:member link="panda_link5"/>
-    <drake:member link="panda_link7"/>
-    <drake:ignored_collision_filter_group name="group_link57"/>
-  </drake:collision_filter_group>
-  <drake:collision_filter_group name="group_link68">
-    <drake:member link="panda_link6"/>
-    <drake:member link="panda_link8"/>
-    <drake:ignored_collision_filter_group name="group_link68"/>
-  </drake:collision_filter_group>
 </robot>

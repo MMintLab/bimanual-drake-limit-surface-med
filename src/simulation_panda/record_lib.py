@@ -74,7 +74,7 @@ class RecordPoses(LeafSystem):
         
         object2right_ts = object2right.translation()[:2]
         object2right_yaw = object2right.rotation().ToRollPitchYaw().yaw_angle()
-        object2right_se2 = np.array([object2right_ts[0], object2right_ts[1], object2right_yaw])
+        object2right_se2 = np.array([object2right_ts[0], object2right_ts[1], -(object2right_yaw - np.pi)])
         
         self.object2left_data.append(object2left_se2)
         self.object2right_data.append(object2right_se2)

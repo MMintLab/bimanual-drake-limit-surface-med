@@ -15,6 +15,22 @@ import os
 def RepoDir():
     return os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 
+def load_bimanual_custom(plant: MultibodyPlant, scene_graph: SceneGraph = None, radius_left_finger=0.1, radius_right_finger=0.1):
+    directive_path = os.path.join(RepoDir(),"../urdf/franka_description/bimanual_franka_custom.yaml")
+    
+    if scene_graph is None:
+        parser = Parser(plant)
+    else:
+        parser = Parser(plant, scene_graph)
+    directives = LoadModelDirectives(directive_path)
+    models = ProcessModelDirectives(directives, plant, parser)
+    
+    left_franka_instance = plant.GetModelInstanceByName("franka_left")
+    right_franka_instance = plant.GetModelInstanceByName("franka_right")
+    
+    
+    plant.Finalize()
+
 def load_bimanual_setup(plant: MultibodyPlant, scene_graph: SceneGraph = None, radius_left_finger=0.1, radius_right_finger=0.1):
     directive_path = os.path.join(RepoDir(),"../urdf/franka_description/bimanual_franka_station.yaml")
     
