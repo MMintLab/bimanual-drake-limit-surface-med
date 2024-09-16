@@ -40,7 +40,7 @@ class ArmStation(WorkStation):
         self.seed_q0 = np.array([-0.41819804, -0.3893826, 0.1001545, -2.50638261, 1.81897449, 1.8743886, -2.15126654, 
                                                0.0484422, -0.21649935, 0.48641599, -2.30843626, -1.65661519, 1.91091385, -0.99507908])
         
-        self.target_se2_left = np.array([-0.00,0.03,0.0])
+        self.target_se2_left = np.array([0.03,0.00,0.0])
         self.target_se2_right = np.array([0.03,0,np.pi/2])
         self.object_pose = RigidTransform(RollPitchYaw(3.14, -1.58, 0.86), [0.46, -0.04, 0.48])
         
@@ -53,7 +53,7 @@ class ArmStation(WorkStation):
         finger_length = 0.03
         self.box_width = 0.005
         obj_mass = 0.3
-        self.object = shape_lib.AddBox(plant, "object", lwh=(self.box_width*8, self.box_width*8,self.box_width), mass=obj_mass, mu=2.0, color=[0,0,1,0.3])
+        self.object = shape_lib.AddBox(plant, "object", lwh=(self.box_width*8, self.box_width*8,self.box_width), mass=obj_mass, mu=1.0, color=[0,0,1,0.3])
         # self.object = shape_lib.AddBox(plant, "object", lwh=(0.25, 0.25,self.box_width), mass=obj_mass, mu=2.0, color=[0,0,1,0.3])
         
         #setup ground
@@ -70,7 +70,7 @@ class ArmStation(WorkStation):
         object_pose0 = self.object_pose
         left_pose0 = RigidTransform(object_pose0.rotation().ToQuaternion(), object_pose0.translation() + object_pose0.rotation().matrix() @ np.array([0,0,-self.box_width/2.0 - finger_length/2.0]))
         right_pose0 = RigidTransform(object_pose0.rotation().ToQuaternion(), object_pose0.translation() + object_pose0.rotation().matrix() @ np.array([0,0,self.box_width/2.0 + finger_length/2.0]))
-        ts, left_poses, right_poses, obj_poses = run_full_inhand_og(self.target_se2_left, self.target_se2_right, left_pose0, right_pose0, object_pose0, rotation = np.pi/6)
+        ts, left_poses, right_poses, obj_poses = run_full_inhand_og(self.target_se2_left, self.target_se2_right, left_pose0, right_pose0, object_pose0, rotation = np.pi/4)
         left_piecewise, right_piecewise, object_piecewise = piecewise_traj(ts, left_poses, right_poses, obj_poses)
         # then solve ik for joint trajectory
         T = ts[-1]
