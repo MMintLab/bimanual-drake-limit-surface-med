@@ -10,6 +10,7 @@ PATH_GOALS = [
     (np.array([0.03, 0.015, np.pi]), np.array([0.03, 0.015, -np.pi/2])),
     (np.array([0.0, 0.0, -np.pi/2]), np.array([0.0, 0.0, np.pi/2])),
 ]
+ONLY_ANGLES_ALLOWED = [20, 30, 45, 60]
 def naive_closed_loop(bimanual_kuka: BimanualKuka, qgoal_thanos, qgoal_medusa, angle = 30):
     assert 0 <= angle <= 180, "Angle must be between 0 and 180 degrees"
     #solve thanos goal, then medusa goal
@@ -29,8 +30,8 @@ if __name__ == '__main__':
     rospy.sleep(0.1)
     bimanual_kuka.setup_robot(gap=0.012)
     
-    path_num = 2
-    angle = 60
+    path_num = 0
+    angle = ONLY_ANGLES_ALLOWED[0]
     qgoal_thanos = PATH_GOALS[path_num][0]
     qgoal_medusa = PATH_GOALS[path_num][1]
     

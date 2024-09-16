@@ -42,7 +42,7 @@ def solveDualIK(plant: MultibodyPlant, left_pose: RigidTransform, right_pose: Ri
     lower_limits = plant.GetPositionLowerLimits()
     upper_limits = plant.GetPositionUpperLimits()
     
-    boundary_mod = 2.0
+    boundary_mod = 1.0
     boundary_modifier = np.array([0.0, 0.0, 0.0, 0.0, boundary_mod, boundary_mod, 0.0]) * np.pi/180.0
     
     left_lower_limit = lower_limits[:7] + boundary_modifier

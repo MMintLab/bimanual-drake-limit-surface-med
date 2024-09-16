@@ -74,13 +74,13 @@ if __name__ == '__main__':
     current_obj2left_se2 = np.array([0.0, 0.0, 0.0])
     current_obj2right_se2 = np.array([0.0, 0.0, np.pi])
     
-    desired_obj2left_se2 = np.array([0.00, 0.02, 0])
-    desired_obj2right_se2 = np.array([0.00, -0.02, np.pi])
+    desired_obj2left_se2 = np.array([0.00, -0.02, np.pi/4])
+    desired_obj2right_se2 = np.array([0.00, 0.02, np.pi - np.pi/4])
     
     
     dls_params = DualLimitSurfaceParams(mu_A = 0.75, r_A = 0.04, N_A = 20.0, mu_B = 0.75, r_B = 0.04, N_B = 20.0)
     horizon = 7
-    obj2left, obj2right, vs = inhand_planner(current_obj2left_se2, current_obj2right_se2, desired_obj2left_se2, desired_obj2right_se2, dls_params, steps = horizon, angle = 60, palm_radius=0.04, kv = 20.0)
+    obj2left, obj2right, vs = inhand_planner(current_obj2left_se2, current_obj2right_se2, desired_obj2left_se2, desired_obj2right_se2, dls_params, steps = horizon, angle = 45, palm_radius=0.035, kv = 20.0)
     
     print(np.round(desired_obj2left_se2 - obj2left[:,-1],4))
     print(np.round(desired_obj2right_se2 - obj2right[:,-1],4))

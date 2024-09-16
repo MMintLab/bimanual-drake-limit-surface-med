@@ -3,7 +3,7 @@ import os
 
 # given a folder and object, generate MSE error for each path
 if __name__ == '__main__':
-    is_naive = True
+    is_naive = False
     is_closed_loop = True
     object = "circle"
     even = True # should not be false

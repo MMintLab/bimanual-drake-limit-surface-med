@@ -7,20 +7,20 @@ import os
 from planning.drake_inhand_planner2 import DualLimitSurfaceParams, inhand_planner
 PATH_GOALS = [
     (np.array([0.0, 0.02, np.pi]), np.array([0.0, -0.02, 0.0])),
-    (np.array([0.0, -0.02, np.pi]), np.array([0.0, 0.02, 0.0])),
-    (np.array([0.02, 0.015, np.pi]), np.array([0.02, 0.015, -np.pi/2])),
+    (np.array([0.0, -0.02, np.pi]), np.array([0.0, -0.02, 0.0])),
+    (np.array([0.0, 0.02, np.pi + np.pi/4]), np.array([0.0, -0.02, 0.0])),
     (np.array([0.0, 0.0, -np.pi/2]), np.array([0.0, 0.0, np.pi/2])),
 ]
 
 #mm for tables
 def algo_open_loop(bimanual_kuka: BimanualKuka, goal_thanos, goal_medusa, angle = 30):
     #get current se2 positions of end-effector
-    current_thanos = np.array([0,0,np.pi])
-    current_medusa = np.array([0,0,0])
+    current_thanos = bimanual_kuka.camera_manager.get_thanos_se2()
+    current_medusa = bimanual_kuka.camera_manager.get_medusa_se2()
     
     dls_params = DualLimitSurfaceParams(mu_A = 0.75, r_A = 0.04, N_A = 20.0, mu_B = 0.75, r_B = 0.04, N_B = 20.0)
     horizon = 7
-    obj2left, obj2right, vs = inhand_planner(current_thanos, current_medusa, goal_thanos, goal_medusa, dls_params, steps = horizon, angle = 60, palm_radius=0.04, kv = 20.0)
+    obj2left, obj2right, vs = inhand_planner(current_thanos, current_medusa, goal_thanos, goal_medusa, dls_params, steps = horizon, angle = 60, palm_radius=0.034, kv = 20.0)
     input("Press Enter to keep going")
     desired_obj2left_se2s = []
     desired_obj2right_se2s = []
