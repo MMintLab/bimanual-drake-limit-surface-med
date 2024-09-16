@@ -30,7 +30,7 @@ class DualLimitSurfaceParams:
     def get_Bsqrt(self):
         return np.diag([1/(self.mu_B*self.N_B), 1/(self.mu_B*self.N_B), 1/(self.mu_B*self.N_B*self.c*self.r_B)])
 
-def inhand_planner(obj2left_se2: np.ndarray, obj2right_se2: np.ndarray, desired_obj2left_se2: np.ndarray, desired_obj2right_se2: np.ndarray, dual_limit_surface_params: DualLimitSurfaceParams, obj_mass = 0.5, angle = 30 * np.pi/180, palm_radius = 0.04, steps = 10, kv = 0.5):
+def inhand_planner(obj2left_se2: np.ndarray, obj2right_se2: np.ndarray, desired_obj2left_se2: np.ndarray, desired_obj2right_se2: np.ndarray, dual_limit_surface_params: DualLimitSurfaceParams, obj_mass = 0.5, angle = 30 * np.pi/180, palm_radius = 0.04, steps = 10, kv = 0.5, is_panda = False):
     assert dual_limit_surface_params.mu_A == dual_limit_surface_params.mu_B
     
     prog = MathematicalProgram()
@@ -95,7 +95,11 @@ def inhand_planner(obj2left_se2: np.ndarray, obj2right_se2: np.ndarray, desired_
         N_B = dual_limit_surface_params.N_A + mg_cos_theta
         c = (dual_limit_surface_params.N_A)**2 / (N_B)**2
         
-        vy = vs[1,t-1]
+        if is_panda:
+            #panda use s -x instead
+            vy = vs[0,t-1]
+        else:
+            vy = vs[1,t-1]
         if dual_limit_surface_params.r_A == dual_limit_surface_params.r_B:
             const_sqrt_v_Ainv_v = (c - 1 + (mg_sin_theta**2)/((mu_B*N_B)**2))
             c_g_v = -2 * c * mg_sin_theta * vy

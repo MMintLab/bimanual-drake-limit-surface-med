@@ -27,3 +27,17 @@ directives:
 - add_weld:
     parent: franka_right_origin
     child: franka_right::panda_link0
+
+- add_frame:
+    name: left_finger
+    X_PF:
+        base_frame: franka_left::panda_link8
+        rotation: !Rpy { deg: [0.0, 0.0, 0.0]}
+        translation: [0.0, 0.0, 0.015]
+
+- add_frame:
+    name: right_finger
+    X_PF:
+        base_frame: franka_right::panda_link8
+        rotation: !Rpy {deg: [0.0, 0.0, 0.0]}
+        translation: [0.0, 0.0, 0.015]

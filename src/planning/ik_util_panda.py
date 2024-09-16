@@ -1,11 +1,11 @@
 import sys
 sys.path.append("..")
-from planning.ik_util import solveDualIK
 from pydrake.multibody.plant import MultibodyPlant
 from pydrake.math import RotationMatrix, RollPitchYaw, RigidTransform
 from pydrake.all import PiecewisePose, PiecewiseTrajectory, Quaternion, PiecewisePolynomial
 import numpy as np
 from typing import List
+from pydrake.all import InverseKinematics, SnoptSolver
 
 '''
     Ik Utils 2.0
@@ -14,6 +14,59 @@ from typing import List
     
     Then run ik to follow the 3d poses.
 '''
+def solveDualIK(plant: MultibodyPlant, plant_context, left_pose: RigidTransform, right_pose: RigidTransform, left_frame_name: str, right_frame_name: str, q0=1e-10*np.ones(14)):
+    ik = InverseKinematics(plant, plant_context, with_joint_limits=True)
+    ik.AddPositionConstraint(
+        plant.GetFrameByName(left_frame_name),
+        np.array([0,0,0]),
+        plant.world_frame(),
+        left_pose.translation(),
+        left_pose.translation())
+    ik.AddOrientationConstraint(
+        plant.GetFrameByName(left_frame_name),
+        RotationMatrix(RollPitchYaw(0,0,0)),
+        plant.world_frame(),
+        left_pose.rotation(),
+        0.0
+    )
+    
+    ik.AddPositionConstraint(
+        plant.GetFrameByName(right_frame_name),
+        np.array([0,0,0]),
+        plant.world_frame(),
+        right_pose.translation(),
+        right_pose.translation())
+    ik.AddOrientationConstraint(
+        plant.GetFrameByName(right_frame_name),
+        RotationMatrix(RollPitchYaw(0,0,0)),
+        plant.world_frame(),
+        right_pose.rotation(),
+        0.0
+    )
+    
+    #make sure pandas frames are 180 degrees apart
+    ik.AddAngleBetweenVectorsConstraint(
+        frameA=plant.GetFrameByName(left_frame_name),
+        na_A=np.array([[0,0,1]]).T,
+        frameB=plant.GetFrameByName(right_frame_name),
+        nb_B=np.array([[0,0,1]]).T,
+        angle_lower=np.pi,
+        angle_upper=np.pi
+    )
+    
+    # add collision constraints
+    ik.AddMinimumDistanceLowerBoundConstraint(0.01)
+    
+    prog = ik.get_mutable_prog()
+    q = ik.q()
+    
+    if np.abs(q0).sum() > 1e-4:
+        prog.AddQuadraticErrorCost(np.eye(14),q0,q)
+    prog.SetInitialGuess(q,q0)
+    solver = SnoptSolver()
+    result = solver.Solve(prog)
+    return result.GetSolution(), result.is_success()
+
 def CalculateRotation(pose: RigidTransform, object_pose: RigidTransform, desired_rotation: float = 0.0) -> RigidTransform:
     '''
     NOTE: hardcode inhand rotation to be in y-axis
@@ -210,6 +263,77 @@ def inhand_back_poses(ts: List[float], left_poses: List[RigidTransform], right_p
     ts.append(ts[-1] + back_time)
     return ts, left_poses, right_poses, obj_poses
 
+def run_full_inhand_naive(desired_obj2left_se2: np.ndarray, desired_obj2right_se2: np.ndarray, left_pose0: RigidTransform, right_pose0: RigidTransform, object_pose0: RigidTransform, rotation: float = np.pi/3):
+    left_poses = [left_pose0]
+    right_poses = [right_pose0]
+    obj_poses = [object_pose0]
+    ts = [0.0]
+    ts, left_poses, right_poses, obj_poses = pause_for(0.05, ts, left_poses, right_poses, obj_poses)
+    rotate_steps = 30
+    rotate_time = 1.0
+    se2_time = 1.0
+    
+    # rotate left
+    ts, left_poses, right_poses, obj_poses = inhand_rotate_poses(-rotation, object_pose0, ts, left_poses, right_poses, obj_poses, steps=rotate_steps, rotate_time=rotate_time)
+    ts, left_poses, right_poses, obj_poses = pause_for(0.05, ts, left_poses, right_poses, obj_poses)
+    
+    # move left
+    ts, left_poses, right_poses, obj_poses = inhand_se2_poses(desired_obj2left_se2, ts, left_poses, right_poses, obj_poses, left=False, se2_time=se2_time)
+    ts, left_poses, right_poses, obj_poses = pause_for(0.05, ts, left_poses, right_poses, obj_poses)
+
+    # move right
+    ts, left_poses, right_poses, obj_poses = inhand_se2_poses(desired_obj2right_se2, ts, left_poses, right_poses, obj_poses, left=True, se2_time=se2_time)
+    ts, left_poses, right_poses, obj_poses = pause_for(0.05, ts, left_poses, right_poses, obj_poses)
+    
+    return ts, left_poses, right_poses, obj_poses
+
+def run_full_inhand(desired_obj2left_se2s: List[np.ndarray], desired_obj2right_se2s: List[np.ndarray], left_pose0: RigidTransform, right_pose0: RigidTransform, object_pose0: RigidTransform, rotation: float = np.pi/3, fix_right=False, rotate_steps=10, rotate_time=1.0, se2_time = 1.0, back_time=1.0):
+    left_poses = [left_pose0]
+    right_poses = [right_pose0]
+    obj_poses = [object_pose0]
+    ts = [0.0]
+    
+    
+    for desired_obj2left_se2, desired_obj2right_se2 in zip(desired_obj2left_se2s, desired_obj2right_se2s):
+        ts, left_poses, right_poses, obj_poses = pause_for(1.0, ts, left_poses, right_poses, obj_poses)
+        
+        # rotate left
+        ts, left_poses, right_poses, obj_poses = inhand_rotate_poses(-rotation, object_pose0, ts, left_poses, right_poses, obj_poses, steps=rotate_steps, rotate_time=rotate_time)
+        ts, left_poses, right_poses, obj_poses = pause_for(0.1, ts, left_poses, right_poses, obj_poses)
+        
+        # move left
+        ts, left_poses, right_poses, obj_poses = inhand_se2_poses(desired_obj2left_se2, ts, left_poses, right_poses, obj_poses, left=False, se2_time=se2_time)
+        ts, left_poses, right_poses, obj_poses = pause_for(0.1, ts, left_poses, right_poses, obj_poses)
+        
+        #rotate back
+        ts, left_poses, right_poses, obj_poses = inhand_rotate_poses(rotation, object_pose0, ts, left_poses, right_poses, obj_poses, steps=rotate_steps, rotate_time=rotate_time)
+        ts, left_poses, right_poses, obj_poses = pause_for(0.1, ts, left_poses, right_poses, obj_poses)
+        
+        # move back (original object pose is the reference)
+        ts, left_poses, right_poses, obj_poses = inhand_back_poses(ts, left_poses, right_poses, obj_poses, object_pose0, back_time=back_time)
+        ts, left_poses, right_poses, obj_poses = pause_for(0.1, ts, left_poses, right_poses, obj_poses)
+        
+        # rotate right
+        ts, left_poses, right_poses, obj_poses = inhand_rotate_poses(rotation, object_pose0, ts, left_poses, right_poses, obj_poses, steps=rotate_steps, rotate_time=rotate_time)
+        ts, left_poses, right_poses, obj_poses = pause_for(0.1, ts, left_poses, right_poses, obj_poses)
+        
+        # move right
+        ts, left_poses, right_poses, obj_poses = inhand_se2_poses(desired_obj2right_se2, ts, left_poses, right_poses, obj_poses, left=True, se2_time=se2_time)
+        ts, left_poses, right_poses, obj_poses = pause_for(0.1, ts, left_poses, right_poses, obj_poses)
+        
+        #rotate back
+        ts, left_poses, right_poses, obj_poses = inhand_rotate_poses(-rotation, object_pose0, ts, left_poses, right_poses, obj_poses, steps=rotate_steps, rotate_time=rotate_time)
+        ts, left_poses, right_poses, obj_poses = pause_for(0.1, ts, left_poses, right_poses, obj_poses)
+        
+        # move back (original object pose is the reference)
+        ts, left_poses, right_poses, obj_poses = inhand_back_poses(ts, left_poses, right_poses, obj_poses, object_pose0, back_time=back_time)
+        ts, left_poses, right_poses, obj_poses = pause_for(0.1, ts, left_poses, right_poses, obj_poses)
+        
+    right_poses = [right_pose @ RigidTransform(RollPitchYaw(0.0,np.pi,0.0), np.zeros(3)) for right_pose in right_poses]
+        
+    return ts, left_poses, right_poses, obj_poses
+
+
 def run_full_inhand_og(desired_obj2left_se2: np.ndarray, desired_obj2right_se2: np.ndarray, left_pose0: RigidTransform, right_pose0: RigidTransform, object_pose0: RigidTransform, rotation: float = np.pi/3):
     left_poses = [left_pose0]
     right_poses = [right_pose0]
@@ -335,7 +459,7 @@ def piecewise_traj(ts: List[float], left_poses: List[RigidTransform], right_pose
     return left_piecewise, right_piecewise, object_piecewise
 
 # solve IK
-def solve_ik_inhand(plant: MultibodyPlant, ts: np.ndarray, left_piecewise: PiecewisePose, right_piecewise: PiecewisePose, left_frame_name: str, right_frame_name: str, q0 = 1e-10*np.ones(14)):
+def solve_ik_inhand(plant: MultibodyPlant, plant_context, ts: np.ndarray, left_piecewise: PiecewisePose, right_piecewise: PiecewisePose, left_frame_name: str, right_frame_name: str, q0 = 1e-10*np.ones(14)):
     #NOTE: make sure q0 is seeded well
     
     left_p_G = left_piecewise.get_position_trajectory()
@@ -350,7 +474,7 @@ def solve_ik_inhand(plant: MultibodyPlant, ts: np.ndarray, left_piecewise: Piece
     for t in ts:
         left_pose = RigidTransform(Quaternion(left_R_G.value(t)), left_p_G.value(t))
         right_pose = RigidTransform(Quaternion(right_R_G.value(t)), right_p_G.value(t))
-        q, success = solveDualIK(plant, left_pose, right_pose, left_frame_name=left_frame_name, right_frame_name=right_frame_name, q0=curr_q)
+        q, success = solveDualIK(plant, plant_context, left_pose, right_pose, left_frame_name=left_frame_name, right_frame_name=right_frame_name, q0=curr_q)
         # if not success:
         #     raise ValueError("IK failed")
         qs.append(q)

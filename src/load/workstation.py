@@ -26,6 +26,7 @@ class WorkStation(ABC):
             SAP is way faster.
         '''
         self.visual = visual
+        self.runtime = 5.0
 
     #must be overloaded or else you can't simulate
     @abstractmethod
@@ -36,7 +37,7 @@ class WorkStation(ABC):
     def initialize_simulate(self, plant: MultibodyPlant, plant_context):
         raise NotImplementedError
     
-    def run(self, simulation_time=10.0, realtime_rate=1.0):
+    def run(self, realtime_rate=1.0):
         if self.visual:
             self.meshcat = StartMeshcat()
         builder = DiagramBuilder()
@@ -53,6 +54,6 @@ class WorkStation(ABC):
         simulator.Initialize()
         simulator.set_target_realtime_rate(realtime_rate)
         self.meshcat.StartRecording()
-        simulator.AdvanceTo(simulation_time)
+        simulator.AdvanceTo(self.runtime)
         self.meshcat.StopRecording()
         self.meshcat.PublishRecording()
