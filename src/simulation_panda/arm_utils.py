@@ -475,20 +475,31 @@ class ApplyForce(LeafSystem):
             object rotation is aligned with left finger
         '''
         # gravity is world, so rotate from world -> object
-        rotated_grav = object_pose.rotation().matrix().T @ self.grav_force
+        
+        z_vector_object = object_pose.rotation().matrix() @ np.array([0,0,1])
+        z_dir = z_vector_object[2]
+        
+        adder_left_force = np.zeros(3)
+        adder_right_force = np.zeros(3)
+        if z_dir >= 1e-3: # object weight on left finger
+            rot_left_finger = self._plant.GetFrameByName("panda_link8", self._left_franka).CalcPoseInWorld(self._plant_context).rotation().matrix()
+            adder_left_force = np.abs(rot_left_finger.T @ self.grav_force)
+        elif z_dir < -1e-3: # object pushing on right finger
+            rot_right_finger = self._plant.GetFrameByName("panda_link8", self._right_franka).CalcPoseInWorld(self._plant_context).rotation().matrix()
+            adder_right_force = np.abs(rot_right_finger.T @ self.grav_force)
+        else:
+            pass
         # if z direction is negative, then it is pushing against left finger
         # if z direction is positive, then it is pushing against right finger
-        additive = np.array([0, 0, np.abs(rotated_grav[2])])
-        adder_left_force = additive if rotated_grav[2] <= 0 else np.array([0, 0, 0])
-        adder_right_force = additive if rotated_grav[2] > 0 else np.array([0, 0, 0])
+        # additive = np.array([0, 0, np.abs(rotated_grav[2])])
+        # adder_left_force = additive if rotated_grav[2] <= 0 else np.array([0, 0, 0])
+        # adder_right_force = additive if rotated_grav[2] > 0 else np.array([0, 0, 0])
         
-        if self.right_pose is None:
-            self.right_pose = self._plant.GetFrameByName("panda_link8", self._right_franka).CalcPoseInWorld(self._plant_context)
+        self.right_pose = self._plant.GetFrameByName("panda_link8", self._right_franka).CalcPoseInWorld(self._plant_context)
         rot_mat_right = self.right_pose.rotation().matrix()
         right_force = rot_mat_right @ (self._force + adder_right_force)
         
-        if self.left_pose is None:
-            self.left_pose = self._plant.GetFrameByName("panda_link8", self._left_franka).CalcPoseInWorld(self._plant_context)
+        self.left_pose = self._plant.GetFrameByName("panda_link8", self._left_franka).CalcPoseInWorld(self._plant_context)
         rot_mat_left = self.left_pose.rotation().matrix()
         left_force = rot_mat_left @ (self._force + adder_left_force)
 

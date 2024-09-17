@@ -65,6 +65,14 @@ class RecordPoses(LeafSystem):
         object[:4] /= np.linalg.norm(object[:4])
         object_pose = RigidTransform(Quaternion(object[:4]), object[4:])
         
+        # check if fingers are 180 degrees facing apart (X angle)
+        right2left = left_pose.inverse() @ right_pose
+        right2left_pitch = np.round(right2left.rotation().ToRollPitchYaw().pitch_angle()*180/np.pi,4)
+        right2left_roll = np.round(right2left.rotation().ToRollPitchYaw().roll_angle()*180/np.pi,4)
+        right2left_yaw = np.round(right2left.rotation().ToRollPitchYaw().yaw_angle()*180/np.pi,4)
+        
+        
+        
         object2left = left_pose.inverse() @ object_pose
         object2right = right_pose.inverse() @ object_pose
         
@@ -74,7 +82,7 @@ class RecordPoses(LeafSystem):
         
         object2right_ts = object2right.translation()[:2]
         object2right_yaw = object2right.rotation().ToRollPitchYaw().yaw_angle()
-        object2right_se2 = np.array([object2right_ts[0], object2right_ts[1], -(object2right_yaw - np.pi)])
+        object2right_se2 = np.array([object2right_ts[0], object2right_ts[1], (object2right_yaw - np.pi)])
         
         self.object2left_data.append(object2left_se2)
         self.object2right_data.append(object2right_se2)

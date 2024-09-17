@@ -101,7 +101,7 @@ class ArmStation(WorkStation):
         kd = 4*np.sqrt(kp)
         controller_block = builder.AddSystem(InverseDynamicsController(plant_arms, kp, ki, kd, False))
         
-        feedforward_dual_block = builder.AddSystem(ApplyForce(plant_arms, obj_mass, force=20.0))
+        feedforward_dual_block = builder.AddSystem(ApplyForce(plant_arms, obj_mass, force=12.0))
         adder_torque_block = builder.AddSystem(Adder(2, 14))
         arm_states_block = builder.AddSystem(CombineArmStates())
     
@@ -146,16 +146,16 @@ class ArmStation(WorkStation):
         plant.SetPositions(plant_context, plant.GetModelInstanceByName("franka_right"), self.qstart[7:14])
         plant.SetFreeBodyPose(plant_context, plant.GetBodyByName("object_body"), self.object_pose)
 import os
-def run_test(input_arg):
-    object = "circle"
+if __name__ == '__main__':
+    object = "square"
     ANGLES = np.array([20, 30, 45, 60])
     PATHS = [
-        (np.array([0.05,0,0]), np.array([-0.02,0,-np.pi/2])), # for some reason final right is 0.04 and final left is 0.00 for positional
+        (np.array([0.05,0,0]), np.array([0.00,0,-np.pi/2])), # for some reason final right is 0.04 and final left is 0.00 for positional
         (np.array([-0.05,0,0]), np.array([0.05,0,0])),
         (np.array([0.00,0,np.pi/2]), np.array([0.00,0,-np.pi/6])),
     ]
-    angle_idx = input_arg[0]
-    path_idx = input_arg[1]    
+    angle_idx = 3
+    path_idx = 0
     
     test = ArmStation(use_custom_object=False, rotation=ANGLES[angle_idx], target_se2_left=PATHS[path_idx][0], target_se2_right=PATHS[path_idx][1], object=object)
     test.run(1e4)
@@ -163,22 +163,13 @@ def run_test(input_arg):
     object2left_data = test.pub.object2left_data
     object2right_data = test.pub.object2right_data
     
-    final_object2left = object2left_data[-1]
-    final_object2right = object2right_data[-1]
-    
     desired_obj2left = PATHS[path_idx][0]
     desired_obj2right = PATHS[path_idx][1]
     
     angles = ANGLES[angle_idx]
-    if not os.path.exists(f"data/naive/open_loop/{object}/even"):
-        os.makedirs(f"data/naive/open_loop/{object}/even")
-    np.save(f"data/naive/open_loop/{object}/even/naive_angle_{angles}_path_{path_idx}_MSE.npy", np.array([final_object2left, final_object2right, desired_obj2left, desired_obj2right]))
-
-if __name__ == '__main__':
-    from multiprocessing import Pool
-    cores = 14
-    # get every combination of angle indices and path indices
-    pool = Pool(cores)
-    pts = np.mgrid[0:4, 0:3].reshape(2, -1)
-    pool.map(run_test, pts.T)
-    print("Done")
+    if not os.path.exists(f"data/figure/open_loop/naive/"):
+        os.makedirs(f"data/figure/open_loop/naive/")
+    np.save(f"data/figure/open_loop/naive/desired_obj2left.npy", desired_obj2left)
+    np.save(f"data/figure/open_loop/naive/desired_obj2right.npy", desired_obj2right)
+    np.save(f"data/figure/open_loop/naive/obj2left_data.npy", object2left_data)
+    np.save(f"data/figure/open_loop/naive/obj2right_data.npy", object2right_data)
