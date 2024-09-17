@@ -9,8 +9,8 @@ from planning.drake_inhand_planner2 import DualLimitSurfaceParams, inhand_planne
 import multiprocessing as mp
 PATH_GOALS = [
     (np.array([0.0, 0.02, np.pi]), np.array([0.0, -0.02, 0.0])),
-    (np.array([0.0, -0.02, np.pi]), np.array([0.0, 0.02, 0.0])),
-    (np.array([0.0, -0.02, np.pi + np.pi/4]), np.array([0.0, 0.02, -np.pi/4])),
+    (np.array([0.0, -0.02, np.pi]), np.array([0.0, -0.02, 0.0])),
+    (np.array([0.0, 0.00, np.pi]), np.array([0.0, 0.02, np.pi/4])),
     (np.array([0.0, 0.0, -np.pi/2]), np.array([0.0, 0.0, np.pi/2])),
 ]
 
@@ -30,7 +30,6 @@ def algo_closed_loop(bimanual_kuka: BimanualKuka, idx_pathgoals, angle = 30):
     else:
         horizon = 3
     obj2left, obj2right, vs = inhand_planner(current_thanos, current_medusa, goal_thanos, goal_medusa, dls_params, steps = horizon, angle = 60, palm_radius=0.04, kv = 20.0)
-    input("Press Enter to keep going")
     desired_obj2left_se2s = []
     desired_obj2right_se2s = []
     for i in range(1,horizon):
@@ -42,18 +41,24 @@ def algo_closed_loop(bimanual_kuka: BimanualKuka, idx_pathgoals, angle = 30):
     # rotate to from horizontal to vertical
     bimanual_kuka.rotate_arms(90 * np.pi / 180, readjust_arms=False, rotate_time = 15.0)
     for desired_obj2left_se2, desired_obj2right_se2 in zip(desired_obj2left_se2s, desired_obj2right_se2s):
-        bimanual_kuka.rotate_arms(-(90-angle) * np.pi / 180, grasp_force = 25.0, rotate_time = 15.0, readjust_arms=False)
-        bimanual_kuka.se2_arms(desired_obj2left_se2, medusa=False, se2_time = 10.0, force = 5.0, object_kg = 3.0, filter_vector_medusa=np.array([1,1,1,1,1,0]), filter_vector_thanos=np.array([1,1,1,1,1,1]))
+        bimanual_kuka.rotate_arms(-(90-angle) * np.pi / 180, grasp_force = 30.0, rotate_time = 15.0, readjust_arms=False)
+        bimanual_kuka.se2_arms(desired_obj2left_se2, medusa=False, se2_time = 10.0, force = 15.0, object_kg = 0.5, filter_vector_medusa=np.array([1,1,1,1,1,0]), filter_vector_thanos=np.array([1,1,1,1,1,0]))
         bimanual_kuka.rotate_arms((90-angle) * np.pi / 180, readjust_arms=False, rotate_time=15.0) #back to vertical
         bimanual_kuka.move_back(endtime=10.0)
         
-        bimanual_kuka.rotate_arms((90-angle) * np.pi / 180, grasp_force = 25.0, rotate_time = 15.0, readjust_arms=False)
-        bimanual_kuka.se2_arms(desired_obj2right_se2, medusa=True, se2_time = 10.0, force = 0.0, object_kg = 3.0, filter_vector_medusa=np.array([1,1,1,1,1,1]), filter_vector_thanos=np.array([1,1,1,1,1,0]))
+        bimanual_kuka.rotate_arms((90-angle) * np.pi / 180, grasp_force = 30.0, rotate_time = 15.0, readjust_arms=False)
+        bimanual_kuka.se2_arms(desired_obj2right_se2, medusa=True, se2_time = 10.0, force = 15.0, object_kg = 0.5, filter_vector_medusa=np.array([1,1,1,1,1,0]), filter_vector_thanos=np.array([1,1,1,1,1,0]))
         bimanual_kuka.rotate_arms(-(90-angle) * np.pi / 180, readjust_arms=False, rotate_time = 15.0) #back to vertical
         bimanual_kuka.move_back(endtime=10.0)
         
     qthanos = bimanual_kuka.camera_manager.get_thanos_se2()
     qmedusa = bimanual_kuka.camera_manager.get_medusa_se2()
+    
+    try:
+        bimanual_kuka.rotate_arms(-90 * np.pi / 180, readjust_arms=False)
+    except:
+        pass
+    
     return qthanos, qmedusa
 
 class CollectCamera:
@@ -81,15 +86,17 @@ def algo_closed_loop_mp(bimanual_kuka: BimanualKuka, idx_pathgoals, angle = 30):
     
     camera = CollectCamera()
     def fn(bimanual_kuka, idx_pathgoals, angle, q):
-        q.put(algo_closed_loop(bimanual_kuka, idx_pathgoals, angle))
+        results = algo_closed_loop(bimanual_kuka, idx_pathgoals, angle)
+        # results = np.array([0,0,0]), np.array([0,0,0])
+        q.put(results)
         
     p = mp.Process(target=fn, args=(bimanual_kuka, idx_pathgoals, angle, q))
     p.start()
     p.join()
     # qthanos, qmedusa = q.get()
     
-    qthanos_traj = np.array(camera.obj2thanos_list)
-    qmedusa_traj = np.array(camera.obj2medusa_list)
+    qthanos_traj = np.stack(camera.obj2thanos_list)
+    qmedusa_traj = np.stack(camera.obj2medusa_list)
     qthanos_t = np.array(camera.obj2thanos_t_list)
     qmedusa_t = np.array(camera.obj2medusa_t_list)
     return qthanos_traj, qmedusa_traj, qthanos_t, qmedusa_t
@@ -102,7 +109,8 @@ if __name__ == '__main__':
     bimanual_kuka.setup_robot(gap=0.012)
     
     path_num = 0
-    angle = 30
+    angle = 45
+    
     qgoal_thanos = PATH_GOALS[path_num][0]
     qgoal_medusa = PATH_GOALS[path_num][1]
     
@@ -123,7 +131,6 @@ if __name__ == '__main__':
     np.save(f"data/algo/closed_loop/figure/algo_angle_{angle}_path_{path_num}_goal_medusa.npy", qgoal_medusa)
     np.save(f"data/algo/closed_loop/figure/algo_angle_{angle}_path_{path_num}_current_thanos.npy", qthanos)
     np.save(f"data/algo/closed_loop/figure/algo_angle_{angle}_path_{path_num}_current_medusa.npy", qmedusa)
-    bimanual_kuka.rotate_arms(-90 * np.pi / 180, readjust_arms=False)
     
     # plot the data
     
