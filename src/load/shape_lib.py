@@ -27,6 +27,18 @@ def AddGround(plant: MultibodyPlant):
     ground_prop = AddContactModel(plant, halfspace_slab=0.5, hydro_mod = 3e4, dissip=1.0, mu_static=1.0, res_hint=10)
     RegisterShape(plant, "GroundVisualGeometry", plant.world_body(), HalfSpace(), ground_prop, ground_color)
     
+def AddGhostBox(plant: MultibodyPlant, name: str, lwh=(1.0,1.0,1.0), mass=1.0, mu = 1.0, color=[1,0,0,1]):
+    box_instance = plant.AddModelInstance(name)
+    box_body = plant.AddRigidBody(f"{name}_body",
+                box_instance,
+                SpatialInertia(mass=mass,
+                               p_PScm_E=np.array([0.0,0.0,0.0]),
+                               G_SP_E=UnitInertia.SolidBox(*lwh)
+                               )
+                )
+    box = Box(*lwh)
+    RegisterVisualShape(plant, name, box_body, box, color)
+    return box_instance
 def AddBox(plant: MultibodyPlant, name: str, lwh=(1.0,1.0,1.0), mass=1.0, mu = 1.0, color=[1,0,0,1]):
     box_instance = plant.AddModelInstance(name)
 

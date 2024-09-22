@@ -53,5 +53,3 @@ def load_bimanual_setup(plant: MultibodyPlant, scene_graph: SceneGraph = None, r
     
     plant.WeldFrames(plant.GetFrameByName("panda_link8", left_franka_instance), plant.GetFrameByName("left_finger"), offset)
     plant.WeldFrames(plant.GetFrameByName("panda_link8", right_franka_instance), plant.GetFrameByName("right_finger"), offset)
-    
-    plant.Finalize()

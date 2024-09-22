@@ -64,7 +64,7 @@ class ArmStation(WorkStation):
             obj_mass = 0.5
             
             if self.object_name == "square":
-                self.object = shape_lib.AddBox(plant, "object", lwh=(self.box_width*8, self.box_width*8,self.box_width), mass=obj_mass, mu=1.0, color=[0,0,1,0.3])
+                self.object = shape_lib.AddBox(plant, "object", lwh=(self.box_width*8, self.box_width*8,self.box_width), mass=obj_mass, mu=1.0, color=[0,0,1,1.0])
             else:
                 self.object = shape_lib.AddCylinder(plant, self.box_width*8/2, self.box_width, name="object", mass = obj_mass, mu=1.0, color=[0,0,1,0.3])
             
@@ -107,6 +107,9 @@ class ArmStation(WorkStation):
         
         #load bimanual and finalize
         load_bimanual_setup(plant, scene_graph)
+        
+        
+        plant.Finalize()
         
         # generate inhand 3d pose trajectory
         object_pose0 = self.object_pose
